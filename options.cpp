@@ -128,20 +128,20 @@ Options opts::parse_command_line(int ac, char* av[])
 
 				if( toks.size() == 4 )
 				{
-					Channel ch;
-					ch.name_ = trim_copy(toks[0]);
-					ch.file_ = trim_copy(toks[1]);
-					ch.group_ = trim_copy(toks[2]);
-					ch.port_ = lexical_cast<unsigned>(trim_copy(toks[3]));
-					ret.channels_.push_back(ch);
+					ChannelDesc desc;
+					desc.name_ = trim_copy(toks[0]);
+					desc.file_ = trim_copy(toks[1]);
+					desc.group_ = trim_copy(toks[2]);
+					desc.port_ = lexical_cast<unsigned>(trim_copy(toks[3]));
+					ret.channels_.push_back(desc);
 				}
 				else if( toks.size() == 3 )
 				{
-					Channel ch;
-					ch.file_ = trim_copy(toks[0]);
-					ch.group_ = trim_copy(toks[1]);
-					ch.port_ = lexical_cast<unsigned>(trim_copy(toks[2]));
-					ret.channels_.push_back(ch);
+					ChannelDesc desc;
+					desc.file_ = trim_copy(toks[0]);
+					desc.group_ = trim_copy(toks[1]);
+					desc.port_ = lexical_cast<unsigned>(trim_copy(toks[2]));
+					ret.channels_.push_back(desc);
 				}
 				else
 				{
@@ -157,18 +157,18 @@ Options opts::parse_command_line(int ac, char* av[])
 			{
 				notify(vm);			
 
-				Channel channel;
+				ChannelDesc desc;
 
 				if( vm.count("channel-name") )
-					channel.name_ = channel_name;
+					desc.name_ = channel_name;
 				if( vm.count("cap-file") )
-					channel.file_ = cap_file;
+					desc.file_ = cap_file;
 				if( vm.count("group") )
-					channel.group_ = group;
+					desc.group_ = group;
 				if( vm.count("port") )
-					channel.port_ = port;
+					desc.port_ = port;
 
-				ret.channels_.push_back(channel);
+				ret.channels_.push_back(desc);
 			
 			}
 			catch( const required_option& ex )
@@ -182,9 +182,9 @@ Options opts::parse_command_line(int ac, char* av[])
 		// Give each un-named channel a default name
 		for( size_t i = 0; i < ret.channels_.size(); ++i )
 		{
-			Channel& c = ret.channels_[i];
-			if( c.name_.empty() )
-				c.name_ = Formatter() << "Ch" << setw(2) << setfill('0') << right << i+1;
+			ChannelDesc& desc = ret.channels_[i];
+			if( desc.name_.empty() )
+				desc.name_ = Formatter() << "Ch" << setw(2) << setfill('0') << right << i+1;
 		}
 	}
 

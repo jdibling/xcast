@@ -19,7 +19,8 @@ public:
 	:	opts_(std::move(rhs.opts_)),
 		server_queue_(std::move(rhs.server_queue_)),
 		oob_queue_(std::move(rhs.oob_queue_)),
-		state_(std::move(rhs.state_))		
+		state_(std::move(rhs.state_)),
+		channels_(std::move(rhs.channels_))
 	{
 
 	}
@@ -45,19 +46,41 @@ private:
 	std::shared_ptr<msg::MsgQueue>	server_queue_;
 	opts::Options					opts_;
 
-	struct Connection
+	class Conn
 	{
-		boost::asio::ip::udp::endpoint group_;
+	public:
+		Conn(const std::string& group, unsigned short port);
+
+		boost::asio::ip::udp::endpoint		group_;
+		boost::asio::io_service				io_svc_;
+		boost::asio::ip::udp::socket		sock_;
+
+	private:
+		Conn();
+		Conn(const Conn& rhs);
+		Conn(Conn&&);
 	};
 
-	struct Channel
+	class Source
 	{
-		Connection	conn_;
+	public:
 	};
 
-	typedef std::map<std::string, Channel> Channels;
-	Channels	channels_;
+	class Channel
+	{
+	public:
+		Channel(const std::string& group, unsigned short port);
 
+		Conn	conn_;
+	private:
+		Channel();
+		Channel(const Channel&);
+		Channel(Channel&& rhs);
+	};
+
+	typedef std::unique_ptr<Channel> ChannelPtr;
+	typedef std::map<std::string, ChannelPtr> ChannelPtrs;
+	ChannelPtrs channels_;
 };
 
 #endif 

@@ -31,31 +31,51 @@ void GroupProcessor::ProcessOOBQueue()
 	}
 }
 
+namespace ip = boost::asio::ip;
+using ip::udp;
+
+GroupProcessor::Conn::Conn(const std::string& group, unsigned short port)
+:	group_(ip::address::from_string(group), port),
+	io_svc_(),
+	sock_(io_svc_, group_.protocol())
+{
+	using namespace ip::multicast;
+	sock_.set_option(hops(0));
+	sock_.set_option(outbound_interface(ip::address_v4::from_string("127.0.0.1")));
+}
+GroupProcessor::Channel::Channel(const std::string& group, unsigned short port)
+:	conn_(group, port)
+{
+}
+
 void GroupProcessor::Init()
 {
-	for( opts::ChannelDescs::const_iterator ch = opts_.channels_.begin(); ch != opts_.channels_.end(); ++ch )
+	for( opts::ChannelDescs::const_iterator desc = opts_.channels_.begin(); desc != opts_.channels_.end(); ++desc )
 	{
-		boost::asio::ip::address addr = boost::asio::ip::address::from_string(ch->group_);
-		boost::asio::ip::udp::endpoint endpoint(addr, ch->port_);
-		boost::asio::io_service io_svc;
-		boost::asio::ip::udp::socket socket(io_svc, endpoint.protocol());
-		socket.set_option(boost::asio::ip::multicast::hops(0));	
-		socket.set_option(boost::asio::ip::multicast::outbound_interface(boost::asio::ip::address_v4::from_string("127.0.0.1")));
-
-		string buf;
-		buf = dibcore::util::Formatter() 
-			<< ch->name_ << "\t" << endpoint.address().to_string() << " : " << endpoint.port() << "\tTESTTESTTEST\n";
-
-		size_t bytes = socket.send_to(boost::asio::buffer(buf), endpoint);
-
-		Channel ch;
-		
+		ChannelPtr ch(new Channel(desc->group_, desc->port_));
+		channels_[desc->name_] = std::move(ch);
 	}
 }
 
 void GroupProcessor::Teardown()
 {
+
+
 }
+/*
+	boost::asio::ip::address addr = boost::asio::ip::address::from_string(group);
+	ch.conn_.group_ = unique_ptr<boost::asio::ip::udp::endpoint>(new boost::asio::ip::udp::endpoint(addr, port_));
+	ch.conn_.io_svc_ = unique_ptr<boost::asio::io_service>(new boost::asio::io_service);
+	ch.conn_.sock_ = unique_ptr<boost::asio::ip::udp::socket>(new boost::asio::ip::udp::socket(*ch.conn_.io_svc_.get(), ch.conn_.group_->protocol()));
+	ch.conn_.sock_->set_option(boost::asio::ip::multicast::hops(0));	
+	ch.conn_.sock_->set_option(boost::asio::ip::multicast::outbound_interface(boost::asio::ip::address_v4::from_string("127.0.0.1")));
+
+	string buf;
+	buf = dibcore::util::Formatter() 
+		<< desc->name_ << "\t" << ch.conn_.group_->address().to_string() << " : " << ch.conn_.group_->port() << "\tTESTTESTTEST\n";
+
+	size_t bytes = ch.conn_.sock_->send_to(boost::asio::buffer(buf), *ch.conn_.group_.get());
+*/
 
 void GroupProcessor::HandleThreadDie(msg::ThreadDie*)
 {
@@ -74,8 +94,18 @@ void GroupProcessor::HandleResumePlayback(msg::ResumePlayback*)
 
 void GroupProcessor::ProcessPacket()
 {
-	static uint64_t n = 0;
-	++n;
+	static uint64_t seq = 0;
+	++seq;
+
+	for( ChannelPtrs::iterator ch = channels_.begin(); ch != channels_.end(); ++ch )
+	{
+		string buf = dibcore::util::Formatter() 
+			<< ch->first << "\t"
+			<< "Packet #   " << setw(9) << setfill('0') << right << seq;
+		size_t sent = ch->second->conn_.sock_.send_to(boost::asio::buffer(buf), ch->second->conn_.group_);
+		if( !sent )
+			bool bk = true;
+	}
 }
 
 void GroupProcessor::operator()() 
