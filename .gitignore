@@ -1,0 +1,13 @@
+*.vcxproj.user
+.sdf
+*.sdf
+*.opensdf
+*Debug/*
+*bin/*
+*x64/*
+*x86/*
+*Release/*
+*.suo
+ipch/*
+*.vsp
+*.psess
