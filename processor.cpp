@@ -2,12 +2,6 @@
 
 using namespace std;
 
-#include <misapi.h>
-#include <MisTypes.h>
-#include <Directory.h>
-#include <Database/SourceContent.h>
-#include <Database\Time.h>
-#include <CaptureApi.h>
 
 #include <core/core.h>
 
@@ -43,8 +37,28 @@ GroupProcessor::Conn::Conn(const std::string& group, unsigned short port)
 	sock_.set_option(hops(0));
 	sock_.set_option(outbound_interface(ip::address_v4::from_string("127.0.0.1")));
 }
-GroupProcessor::Channel::Channel(const std::string& group, unsigned short port)
-:	conn_(group, port)
+
+GroupProcessor::Source::Source(const std::string& cap)
+{
+	// Open the cap file for read
+//	vector<char> file_name(cap.begin(), cap.end());
+	std::string cap_f = cap;
+	unsigned rc = cap_.Open(&cap_f[0], true, false, false);
+	if( rc == MIS::ERR::NOT_FOUND )
+		throwx(dibcore::ex::misapi_error("CaptureApi::Open", rc, cap));
+	// Get some file stats
+	cap_.SeekFromEnd(0);
+	int ttl_recs = 0;
+	__int64 ttl_bytes = 0;
+	cap_.GetFilePosition(&ttl_recs, &ttl_bytes);
+	cap_.SeekFromBeginning(0);
+	ttl_bytes_ = static_cast<uint64_t>(ttl_bytes);
+}
+
+GroupProcessor::Channel::Channel(const std::string& name, const std::string& cap_file, const std::string& group, unsigned short port)
+:	name_(name),
+	conn_(group, port),
+	src_(cap_file)
 {
 }
 
@@ -52,7 +66,7 @@ void GroupProcessor::Init()
 {
 	for( opts::ChannelDescs::const_iterator desc = opts_.channels_.begin(); desc != opts_.channels_.end(); ++desc )
 	{
-		ChannelPtr ch(new Channel(desc->group_, desc->port_));
+		ChannelPtr ch(new Channel(desc->name_,desc->file_,desc->group_, desc->port_));
 		channels_[desc->name_] = std::move(ch);
 	}
 }
@@ -62,20 +76,6 @@ void GroupProcessor::Teardown()
 
 
 }
-/*
-	boost::asio::ip::address addr = boost::asio::ip::address::from_string(group);
-	ch.conn_.group_ = unique_ptr<boost::asio::ip::udp::endpoint>(new boost::asio::ip::udp::endpoint(addr, port_));
-	ch.conn_.io_svc_ = unique_ptr<boost::asio::io_service>(new boost::asio::io_service);
-	ch.conn_.sock_ = unique_ptr<boost::asio::ip::udp::socket>(new boost::asio::ip::udp::socket(*ch.conn_.io_svc_.get(), ch.conn_.group_->protocol()));
-	ch.conn_.sock_->set_option(boost::asio::ip::multicast::hops(0));	
-	ch.conn_.sock_->set_option(boost::asio::ip::multicast::outbound_interface(boost::asio::ip::address_v4::from_string("127.0.0.1")));
-
-	string buf;
-	buf = dibcore::util::Formatter() 
-		<< desc->name_ << "\t" << ch.conn_.group_->address().to_string() << " : " << ch.conn_.group_->port() << "\tTESTTESTTEST\n";
-
-	size_t bytes = ch.conn_.sock_->send_to(boost::asio::buffer(buf), *ch.conn_.group_.get());
-*/
 
 void GroupProcessor::HandleThreadDie(msg::ThreadDie*)
 {
@@ -92,20 +92,51 @@ void GroupProcessor::HandleResumePlayback(msg::ResumePlayback*)
 	state_ = play_state;
 }
 
+bool GroupProcessor::ComparePacketTimes(const ChannelPtrs::value_type& lhs, const ChannelPtrs::value_type& rhs)
+{
+	long lhs_ms = 0, rhs_ms = 0;
+	lhs.second->src_.cap_.GetCurrentPacketTimeAsMS(&lhs_ms);
+	rhs.second->src_.cap_.GetCurrentPacketTimeAsMS(&rhs_ms);
+
+	return lhs_ms < rhs_ms;
+}
+
 void GroupProcessor::ProcessPacket()
 {
 	static uint64_t seq = 0;
 	++seq;
 
-	for( ChannelPtrs::iterator ch = channels_.begin(); ch != channels_.end(); ++ch )
+	///***  SELECT NEXT PACKET TO SEND ***///
+	ChannelPtrs::iterator it = std::min_element(channels_.begin(), channels_.end(), &GroupProcessor::ComparePacketTimes);
+	if( it == channels_.end() )
+		throwx(dibcore::ex::generic_error("Internal Malfunction"));
+
+	///***  SEND PACKET ***///
+	Channel& chan = *it->second.get();
+
+	static const size_t packet_buf_sz = 1024 * 1024;
+	static vector<char> packet_buf(packet_buf_sz, 0);
+
+	int bytes_read = 0;
+	unsigned rc = chan.src_.cap_.ReadPacket(&packet_buf[0], static_cast<unsigned>(packet_buf.size()), &bytes_read);
+	switch( rc )
 	{
-		string buf = dibcore::util::Formatter() 
-			<< ch->first << "\t"
-			<< "Packet #   " << setw(9) << setfill('0') << right << seq;
-		size_t sent = ch->second->conn_.sock_.send_to(boost::asio::buffer(buf), ch->second->conn_.group_);
-		if( !sent )
-			bool bk = true;
+	case MIS::ERR::SUCCESS :
+		break;
+
+	case MIS::ERR::END_OF_FILE :
+		channels_.erase(it);
+		return;
+
+	default :
+		throwx(dibcore::ex::misapi_error("CaptureApi.ReadPacket", rc, chan.name_));
 	}
+
+	size_t sent_bytes = chan.conn_.sock_.send_to(boost::asio::buffer(packet_buf, bytes_read), chan.conn_.group_);
+	if( !sent_bytes )
+			throwx(dibcore::ex::generic_error("No Bytes Sent"));
+
+	boost::this_thread::sleep(boost::posix_time::milliseconds(5));
 }
 
 void GroupProcessor::operator()() 

@@ -11,6 +11,14 @@
 
 #include <boost/asio.hpp>
 
+//#include <misapi.h>
+//#include <MisTypes.h>
+//#include <Directory.h>
+//#include <Database/SourceContent.h>
+//#include <Database\Time.h>
+#include <CaptureApi.h>
+
+
 class GroupProcessor : private msg::MessageHandler
 {
 public:
@@ -64,14 +72,19 @@ private:
 	class Source
 	{
 	public:
+		Source(const std::string& cap_file);
+		CaptureApi	cap_;
+		uint64_t	ttl_bytes_;
 	};
 
 	class Channel
 	{
 	public:
-		Channel(const std::string& group, unsigned short port);
+		Channel(const std::string& name, const std::string& cap_file, const std::string& group, unsigned short port);
 
-		Conn	conn_;
+		Conn		conn_;
+		Source		src_;
+		std::string	name_;
 	private:
 		Channel();
 		Channel(const Channel&);
@@ -81,6 +94,8 @@ private:
 	typedef std::unique_ptr<Channel> ChannelPtr;
 	typedef std::map<std::string, ChannelPtr> ChannelPtrs;
 	ChannelPtrs channels_;
+
+	static bool ComparePacketTimes(const ChannelPtrs::value_type&, const ChannelPtrs::value_type&);
 };
 
 #endif 
