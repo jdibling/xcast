@@ -47,25 +47,30 @@ namespace msg
 		std::string packet_time_;
 	};
 
-	class PausePlayback : public BasicMessage
+	class TogglePause : public BasicMessage
 	{
 	public:
 		void Handle(MessageHandler*);
 	};
 
-	class ResumePlayback : public BasicMessage
-	{
-	public:
-		void Handle(MessageHandler*);
-	};
+	//class PausePlayback : public BasicMessage
+	//{
+	//public:
+	//	void Handle(MessageHandler*);
+	//};
+
+	//class ResumePlayback : public BasicMessage
+	//{
+	//public:
+	//	void Handle(MessageHandler*);
+	//};
 
 	class MessageHandler
 	{
 	public:
 		virtual void HandleThreadDie(ThreadDie*) {};
-		virtual void HandleProgress(Progress*) {};
-		virtual void HandlePausePlayback(PausePlayback*) {};
-		virtual void HandleResumePlayback(ResumePlayback*) {};
+		virtual void HandleProgressReport(Progress*) {};
+		virtual void HandleTogglePause(TogglePause*) {};
 		virtual void HandleRequestProgress(RequestProgress*) {};
 	};
 

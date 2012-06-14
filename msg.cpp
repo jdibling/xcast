@@ -14,17 +14,12 @@ void ThreadDie::Handle(MessageHandler* handler)
 
 void Progress::Handle(MessageHandler* handler) 
 {
-	handler->HandleProgress(this);
+	handler->HandleProgressReport(this);
 }
 
-void PausePlayback::Handle(MessageHandler* handler) 
+void TogglePause::Handle(MessageHandler* handler)
 {
-	handler->HandlePausePlayback(this);
-}
-
-void ResumePlayback::Handle(MessageHandler* handler) 
-{
-	handler->HandleResumePlayback(this);
+	handler->HandleTogglePause(this);
 }
 
 void RequestProgress::Handle(MessageHandler* handler) 

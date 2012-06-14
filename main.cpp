@@ -34,6 +34,8 @@ public:
 
 	void HandleThreadDie(msg::ThreadDie*);
 	void HandleRequestProgress(msg::RequestProgress*);
+	void HandleProgressReport(msg::Progress*);
+	void HandleTogglePause(msg::TogglePause*);
 
 private:
 	enum State { run_state, stop_state }		state_;
@@ -64,7 +66,30 @@ void App::HandleThreadDie(msg::ThreadDie* die)
 void App::HandleRequestProgress(msg::RequestProgress* prog)
 {
 	cout << "STATS" << endl;
+
+	// tell every proc thread to send stats
+	for( GroupThreads::ThreadVec::iterator thread = grp_threads_.threads_.begin(); thread != grp_threads_.threads_.end(); ++thread )
+	{
+		thread->ctx_->oob_queue_->push(unique_ptr<msg::BasicMessage>(new msg::RequestProgress));
+	}
 }
+
+void App::HandleProgressReport(msg::Progress* prog)
+{
+	cout << prog->packet_time_ << endl;
+}
+
+void App::HandleTogglePause(msg::TogglePause* toggle)
+{
+	cout << "PAUSE/PLAY" << endl;
+
+	// tell every proc thread to send stats
+	for( GroupThreads::ThreadVec::iterator thread = grp_threads_.threads_.begin(); thread != grp_threads_.threads_.end(); ++thread )
+	{
+		thread->ctx_->oob_queue_->push(unique_ptr<msg::BasicMessage>(new msg::TogglePause));
+	}
+}
+
 
 void App::run()
 {
@@ -74,7 +99,7 @@ void App::run()
 	///*** Start Processor Threads (1 per channel-group) ***///
 	for( int i = 0; i < 1; ++i )
 	{
-		grp_threads_.threads_.push_back(GroupThread(unique_ptr<GroupProcessor>(new GroupProcessor(this->opts_, server_queue_))));
+		grp_threads_.threads_.push_back(GroupThread(unique_ptr<GroupProcessor>(new GroupProcessor(this->opts_, server_queue_, false))));
 		//GroupProcessor proc(server_queue_);
 		//proc_threads_.add_thread(new boost::thread(proc));
 	}	

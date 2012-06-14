@@ -45,9 +45,9 @@ private:
 	void ProcessOOBQueue();
 	void ProcessPacket();
 
-	void HandlePausePlayback(msg::PausePlayback* pause);
-	void HandleResumePlayback(msg::ResumePlayback* resume);
+	void HandleTogglePause(msg::TogglePause* toggle_pause);
 	void HandleThreadDie(msg::ThreadDie* die);
+	virtual void HandleRequestProgress(msg::RequestProgress* req_prog);
 
 	enum State { play_state, pause_state, die_state } state_;
 
@@ -72,9 +72,21 @@ private:
 	class Source
 	{
 	public:
+		struct PacketTime
+		{
+			bool operator<(const PacketTime& rhs) const;
+			int	m_, d_, hh_, mm_, ss_, ms_;
+		};
+
 		Source(const std::string& cap_file);
+		const uint64_t		ttl_bytes_;
+		std::vector<char>	cur_packet_;
+		PacketTime			cur_packet_time_;
+		uint64_t			cur_byte_;
+
+		unsigned ReadNext();
+	private:
 		CaptureApi	cap_;
-		uint64_t	ttl_bytes_;
 	};
 
 	class Channel
