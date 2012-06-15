@@ -5,11 +5,14 @@
 
 #include <cstdlib>
 #include <memory>
+#include <unordered_map>
+#include <list>
 
 #include "msg.h"
 #include "options.h"
 
 #include <boost/asio.hpp>
+#include <boost/chrono.hpp>
 
 //#include <misapi.h>
 //#include <MisTypes.h>
@@ -98,16 +101,38 @@ private:
 		Source		src_;
 		std::string	name_;
 	private:
+
 		Channel();
 		Channel(const Channel&);
 		Channel(Channel&& rhs);
 	};
+
+	void GatherStats(const Channel& chan, size_t bytes_sent);
 
 	typedef std::unique_ptr<Channel> ChannelPtr;
 	typedef std::map<std::string, ChannelPtr> ChannelPtrs;
 	ChannelPtrs channels_;
 
 	static bool ComparePacketTimes(const ChannelPtrs::value_type&, const ChannelPtrs::value_type&);
+
+	typedef boost::chrono::steady_clock timer_clock;
+	typedef boost::chrono::time_point<timer_clock> tp;
+	tp playback_start_;
+
+	struct BasicStat
+	{
+		BasicStat(tp send_time, size_t bytes_sent) : send_time_(send_time), bytes_sent_(bytes_sent) {}
+		tp				send_time_;
+		size_t			bytes_sent_;
+	};
+	typedef std::list<BasicStat> BasicStats;
+	typedef std::string ChannelID;
+	ChannelID GetChannelID(const Channel& rhs)
+	{
+		return rhs.name_;
+	}
+	typedef std::unordered_map<ChannelID, BasicStats> ChannelStats;
+	ChannelStats raw_stats_;
 };
 
 #endif 

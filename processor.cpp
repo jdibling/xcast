@@ -2,9 +2,18 @@
 
 #include <fstream>
 #include <sstream>
+#include <unordered_map>
+#include <list>
+#include <numeric>
+#include <functional>
 using namespace std;
 
 #include <core/core.h>
+
+#include <boost/chrono.hpp>
+
+
+
 
 GroupProcessor::GroupProcessor(const opts::Options& o, std::shared_ptr<msg::MsgQueue> server_queue, bool playback_paused) 
 :	opts_(o),
@@ -121,6 +130,7 @@ void GroupProcessor::HandleTogglePause(msg::TogglePause*)
 	{
 	case pause_state :
 		state_ = play_state;
+		playback_start_ = boost::chrono::steady_clock::now();
 		break;
 	case play_state :
 		state_ = pause_state;
@@ -149,6 +159,22 @@ void GroupProcessor::HandleRequestProgress(msg::RequestProgress*)
 	ss << "\n";
 
 	prog->packet_time_ = ss.str();
+
+	size_t msgs_sent = 0;
+	size_t ttl_bytes_sent = 0;
+	tp latest_tp = playback_start_;
+	for( ChannelStats::const_iterator ch_it = raw_stats_.begin(); ch_it != raw_stats_.end(); ++ch_it )
+	{
+		for( BasicStats::const_iterator st_it = ch_it->second.begin(); st_it != ch_it->second.end(); ++st_it )
+		{
+			msgs_sent += 1;
+			ttl_bytes_sent += st_it->bytes_sent_;
+			latest_tp = std::max(latest_tp, st_it->send_time_);
+		}
+	}
+
+	boost::chrono::duration<double> elapsed = latest_tp - playback_start_;
+
 
 	// Push the message out
 	server_queue_->push(unique_ptr<msg::BasicMessage>(std::move(prog)));
@@ -189,18 +215,13 @@ void GroupProcessor::ProcessPacket()
 
 	///***  SEND PACKET ***///
 	Channel& chan = *it->second.get();
-	size_t sent_bytes = chan.conn_.sock_.send_to(boost::asio::buffer(chan.src_.cur_packet_), chan.conn_.group_);
-	if( !sent_bytes )
+	size_t bytes_sent = chan.conn_.sock_.send_to(boost::asio::buffer(chan.src_.cur_packet_), chan.conn_.group_);
+	if( !bytes_sent )
 			throwx(dibcore::ex::generic_error("No Bytes Sent"));
 
-	//const Source::PacketTime& pt = it->second->src_.cur_packet_time_;
-	//cout << setw(20) << left << chan.name_ << right << "\t" << setw(4) << sent_bytes << "\t";
-	//cout.width(2);
-	//cout.fill('0');
-	//cout << pt.m_ << "/" << pt.d_ << " " << pt.hh_ << ":" << pt.mm_ << ":" << pt.ss_ << "." << setw(6) << pt.ms_;
-	//cout .width(0);
-	//cout.fill(' ');
-	//cout << endl;
+	///*** ACCUM STATS ***///
+	string s = GetChannelID(chan);
+	raw_stats_[s].push_back(BasicStat(timer_clock::now(), bytes_sent));
 
 	///*** ADVANCE TO NEXT PACKET ***///
 	unsigned rc = chan.src_.ReadNext();
@@ -223,7 +244,7 @@ void GroupProcessor::operator()()
 		if( state_ == play_state )
 		{
 			ProcessPacket();
-			boost::this_thread::sleep(boost::posix_time::milliseconds(5));
+			//boost::this_thread::sleep(boost::posix_time::milliseconds(5));
 		}
 
 		if( channels_.empty() )
