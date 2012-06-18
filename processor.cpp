@@ -19,8 +19,10 @@ GroupProcessor::GroupProcessor(const opts::Options& o, std::shared_ptr<msg::MsgQ
 :	opts_(o),
 	server_queue_(server_queue), 
 	oob_queue_(std::unique_ptr<msg::MsgQueue>(new msg::MsgQueue)), 
-	state_(playback_paused?pause_state:play_state)
+	state_(pause_state)
 {
+	if( !playback_paused )
+		oob_queue_->push(unique_ptr<msg::BasicMessage>((msg::BasicMessage*)new msg::TogglePause()));
 };
 
 
@@ -161,7 +163,7 @@ void GroupProcessor::HandleRequestProgress(msg::RequestProgress*)
 	prog->packet_time_ = ss.str();
 
 	size_t msgs_sent = 0;
-	size_t ttl_bytes_sent = 0;
+	uint64_t ttl_bytes_sent = 0;
 	tp latest_tp = playback_start_;
 	for( ChannelStats::const_iterator ch_it = raw_stats_.begin(); ch_it != raw_stats_.end(); ++ch_it )
 	{
@@ -173,8 +175,11 @@ void GroupProcessor::HandleRequestProgress(msg::RequestProgress*)
 		}
 	}
 
-	boost::chrono::duration<double> elapsed = latest_tp - playback_start_;
+	boost::chrono::duration<long long, boost::nano> elapsed = latest_tp - playback_start_;
+	boost::chrono::milliseconds ms = boost::chrono::duration_cast<boost::chrono::milliseconds>(elapsed);
 
+	uint64_t Bps = (ttl_bytes_sent / ms.count()) * 1000;
+	uint64_t bps = Bps * 8;	
 
 	// Push the message out
 	server_queue_->push(unique_ptr<msg::BasicMessage>(std::move(prog)));
