@@ -15,8 +15,9 @@ using namespace std;
 
 
 
-GroupProcessor::GroupProcessor(const opts::Options& o, std::shared_ptr<msg::MsgQueue> server_queue, bool playback_paused) 
-:	opts_(o),
+GroupProcessor::GroupProcessor(const std::string& group_name, const opts::Options& o, std::shared_ptr<msg::MsgQueue> server_queue, bool playback_paused) 
+:	group_name_(group_name),
+	opts_(o),
 	server_queue_(server_queue), 
 	oob_queue_(std::unique_ptr<msg::MsgQueue>(new msg::MsgQueue)), 
 	state_(pause_state)
@@ -24,7 +25,6 @@ GroupProcessor::GroupProcessor(const opts::Options& o, std::shared_ptr<msg::MsgQ
 	if( !playback_paused )
 		oob_queue_->push(unique_ptr<msg::BasicMessage>((msg::BasicMessage*)new msg::TogglePause()));
 };
-
 
 void GroupProcessor::ProcessOOBQueue()
 {
@@ -51,7 +51,8 @@ GroupProcessor::Conn::Conn(const std::string& group, unsigned short port)
 }
 
 GroupProcessor::Source::Source(const std::string& cap)
-:	ttl_bytes_([&cap]() -> const uint64_t
+:	cur_byte_(0),
+	ttl_bytes_([&cap]() -> const uint64_t
 {
 	ifstream fs(cap, ios::in|ios::binary);
 	size_t a = fs.tellg();
@@ -117,7 +118,9 @@ void GroupProcessor::Init()
 
 void GroupProcessor::Teardown()
 {
-
+	unique_ptr<msg::ThreadDead> dead(new msg::ThreadDead);
+	dead->id_ = this->group_name_;
+	server_queue_->push(unique_ptr<msg::BasicMessage>(std::move(dead)));	
 
 }
 
@@ -132,57 +135,52 @@ void GroupProcessor::HandleTogglePause(msg::TogglePause*)
 	{
 	case pause_state :
 		state_ = play_state;
-		playback_start_ = boost::chrono::steady_clock::now();
+		stats_.playback_start_ = Clock::now();
 		break;
 	case play_state :
 		state_ = pause_state;
+		stats_.prev_elapsed_ += (Clock::now() - stats_.playback_start_);
 		break;
 	default :
 		break;
 	}
 }
 
-void GroupProcessor::HandleRequestProgress(msg::RequestProgress*)
+void GroupProcessor::HandleRequestProgress(msg::RequestProgress* req)
 {
-	unique_ptr<msg::Progress> prog(new msg::Progress());
+	TimePoint	now = Clock::now();
 
-	// Find the next packet to go out, get the packet time.
-	ChannelPtrs::iterator it = std::min_element(channels_.begin(), channels_.end(), &GroupProcessor::ComparePacketTimes);
-	if( it == channels_.end() )
-		throwx(dibcore::ex::generic_error("Internal Malfunction"));
+	unique_ptr<msg::GroupProgress> grp_prog(new msg::GroupProgress());
+	grp_prog->group_ = group_name_;
+	grp_prog->ttl_elapsed_ = boost::chrono::duration_cast<boost::chrono::milliseconds>(stats_.prev_elapsed_ + (now - stats_.playback_start_) );
+	std::set<Source::PacketTime> packet_times;
 
-	stringstream ss;
-	const Source::PacketTime& pt = it->second->src_.cur_packet_time_;
-	ss.width(2);
-	ss.fill('0');
-	ss << pt.m_ << "/" << pt.d_ << " " << pt.hh_ << ":" << pt.mm_ << ":" << pt.ss_ << "." << setw(6) << pt.ms_;
-	ss.width(0);
-	ss.fill(' ');
-	ss << "\n";
-
-	prog->packet_time_ = ss.str();
-
-	size_t msgs_sent = 0;
-	uint64_t ttl_bytes_sent = 0;
-	tp latest_tp = playback_start_;
-	for( ChannelStats::const_iterator ch_it = raw_stats_.begin(); ch_it != raw_stats_.end(); ++ch_it )
+	for_each( channels_.begin(), channels_.end(), [this, &grp_prog, &now, &packet_times, &req](ChannelPtrs::value_type& that)
 	{
-		for( BasicStats::const_iterator st_it = ch_it->second.begin(); st_it != ch_it->second.end(); ++st_it )
-		{
-			msgs_sent += 1;
-			ttl_bytes_sent += st_it->bytes_sent_;
-			latest_tp = std::max(latest_tp, st_it->send_time_);
-		}
-	}
+		unique_ptr<msg::ChannelProgress> ch_prog(new msg::ChannelProgress());
+		const Channel& ch = *that.second.get();
+		const GroupProcessor::Channel::Stats& stats = ch.stats_;
 
-	boost::chrono::duration<long long, boost::nano> elapsed = latest_tp - playback_start_;
-	boost::chrono::milliseconds ms = boost::chrono::duration_cast<boost::chrono::milliseconds>(elapsed);
+		ch_prog->channel_ = ch.name_;
+		ch_prog->cur_src_byte_ = ch.src_.cur_byte_;
+		ch_prog->max_src_byte_ = ch.src_.ttl_bytes_;
+		ch_prog->group_ = grp_prog->group_;
+		ch_prog->bytes_sent_ = stats.bytes_sent_;
+		ch_prog->packet_time_ = ch.src_.cur_packet_time_.format();
 
-	uint64_t Bps = (ttl_bytes_sent / ms.count()) * 1000;
-	uint64_t bps = Bps * 8;	
+		packet_times.insert(ch.src_.cur_packet_time_);
 
-	// Push the message out
-	server_queue_->push(unique_ptr<msg::BasicMessage>(std::move(prog)));
+		grp_prog->bytes_sent_ += stats.bytes_sent_;
+		grp_prog->cur_src_byte_ += ch.src_.cur_byte_;
+		grp_prog->max_src_byte_ += ch.src_.ttl_bytes_;
+
+		server_queue_->push(unique_ptr<msg::BasicMessage>(std::move(ch_prog)));
+	});
+
+	if( !packet_times.empty() )
+		grp_prog->next_packet_ = packet_times.begin()->format();
+
+	server_queue_->push(unique_ptr<msg::BasicMessage>(std::move(grp_prog)));
 }
 
 bool GroupProcessor::Source::PacketTime::operator<(const PacketTime& rhs) const
@@ -199,6 +197,21 @@ bool GroupProcessor::Source::PacketTime::operator<(const PacketTime& rhs) const
 		return ss_ < rhs.ss_;					
 	return ms_ < rhs.ms_;
 }
+
+std::string GroupProcessor::Source::PacketTime::format() const
+{
+	stringstream ss;
+
+	ss 
+		<< setw(2) << setfill('0') << m_ << "/" 
+		<< setw(2) << setfill('0') << d_ << " " 
+		<< setw(2) << setfill('0') << hh_ << ":" 
+		<< setw(2) << setfill('0') << mm_ << ":" 
+		<< setw(2) << setfill('0') << ss_ << "." 
+		<< setw(3) << setfill('0') << ms_;
+	return ss.str();
+}
+
 
 bool GroupProcessor::ComparePacketTimes(const ChannelPtrs::value_type& lhs, const ChannelPtrs::value_type& rhs)
 {
@@ -226,7 +239,7 @@ void GroupProcessor::ProcessPacket()
 
 	///*** ACCUM STATS ***///
 	string s = GetChannelID(chan);
-	raw_stats_[s].push_back(BasicStat(timer_clock::now(), bytes_sent));
+	chan.stats_.bytes_sent_ += bytes_sent;
 
 	///*** ADVANCE TO NEXT PACKET ***///
 	unsigned rc = chan.src_.ReadNext();

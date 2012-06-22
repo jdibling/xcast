@@ -4,7 +4,7 @@
 #include <boost/thread.hpp>
 
 template<class Context>
-class Thread
+class Thread 
 {
 public:
 	Thread(unique_ptr<Context>&& rhs) 
@@ -18,11 +18,24 @@ public:
 			thread_(std::move(rhs.thread_))
 	{
 	}
+
+	Thread<Context>& operator=(Thread<Context>&& rhs)	// move assignment
+	{
+		ctx_ = std::move(rhs.ctx_);
+		thread_ = std::move(rhs.thread_);
+		return * this;
+	}
 	
+	std::string ThreadID() const { return ctx_->ID(); }
+
 	void join();
 
 	unique_ptr<Context>			ctx_;
 	unique_ptr<boost::thread>	thread_;
+private:
+	Thread(const Thread<Context>&);						// undefined -- not copy constructible
+	Thread();											// undefined -- not default constructible
+	Thread<Context>& operator=(const Thread<Context>&);	// undefined -- not copy assignable
 };
 
 template<class Context> void Thread<Context>::join()

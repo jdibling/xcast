@@ -81,7 +81,7 @@ void InterfaceProcessor::ProcessInterfaceEvent_KeyPress(const INPUT_RECORD& ir)
 			break;
 
 		case 'S' :	// stats command
-			server_queue_->push(unique_ptr<msg::RequestProgress>(new msg::RequestProgress));
+			server_queue_->push(unique_ptr<msg::RequestProgress>(new msg::RequestProgress(msg::RequestProgress::indiv_progress)));
 			break;
 
 		case 'P' :	// Pause

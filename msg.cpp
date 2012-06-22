@@ -12,9 +12,19 @@ void ThreadDie::Handle(MessageHandler* handler)
 	handler->HandleThreadDie(this);
 }
 
-void Progress::Handle(MessageHandler* handler) 
+void ThreadDead::Handle(MessageHandler* handler) 
 {
-	handler->HandleProgressReport(this);
+	handler->HandleThreadDead(this);
+}
+
+void GroupProgress::Handle(MessageHandler* handler) 
+{
+	handler->HandleGroupProgressReport(this);
+}
+
+void ChannelProgress::Handle(MessageHandler* handler) 
+{
+	handler->HandleChannelProgressReport(this);
 }
 
 void TogglePause::Handle(MessageHandler* handler)

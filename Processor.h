@@ -25,13 +25,19 @@
 class GroupProcessor : private msg::MessageHandler
 {
 public:
-	GroupProcessor(const opts::Options& o, std::shared_ptr<msg::MsgQueue> server_queue, bool playback_paused=true);
+	typedef boost::chrono::steady_clock Clock;
+	typedef boost::chrono::nanoseconds ClockDuration;
+	typedef boost::chrono::time_point<Clock,ClockDuration> TimePoint;
+
+	GroupProcessor(const std::string& group_name, const opts::Options& o, std::shared_ptr<msg::MsgQueue> server_queue, bool playback_paused=true);
 	GroupProcessor(GroupProcessor&& rhs)
-	:	opts_(std::move(rhs.opts_)),
+	:	group_name_(std::move(rhs.group_name_)),
+		opts_(std::move(rhs.opts_)),
 		server_queue_(std::move(rhs.server_queue_)),
 		oob_queue_(std::move(rhs.oob_queue_)),
 		state_(std::move(rhs.state_)),
-		channels_(std::move(rhs.channels_))
+		channels_(std::move(rhs.channels_)),
+		stats_(std::move(rhs.stats_))
 	{
 
 	}
@@ -39,9 +45,16 @@ public:
 	virtual ~GroupProcessor() {};
 	void operator()() ;
 
+	std::string ID() const { return group_name_; }
+
 	std::unique_ptr<msg::MsgQueue>	oob_queue_;
+	std::string group_name_;
 
 private:
+	GroupProcessor(const GroupProcessor&);				// undefined -- not copy constructible
+	GroupProcessor();									// undefined -- not default constructible
+	GroupProcessor& operator=(const GroupProcessor&);	// undefined -- not copy assignable
+
 	void Init();
 	void Teardown();
 
@@ -79,8 +92,10 @@ private:
 		{
 			bool operator<(const PacketTime& rhs) const;
 			int	m_, d_, hh_, mm_, ss_, ms_;
+			std::string format() const;
 		};
 
+		Source() : ttl_bytes_(0), cur_byte_(0) {};
 		Source(const std::string& cap_file);
 		const uint64_t		ttl_bytes_;
 		std::vector<char>	cur_packet_;
@@ -100,12 +115,26 @@ private:
 		Conn		conn_;
 		Source		src_;
 		std::string	name_;
+
+		// Channel-Level Stats
+		struct Stats
+		{
+			Stats() : bytes_sent_(0) {}
+			uint64_t					bytes_sent_;
+		} stats_;
 	private:
 
 		Channel();
 		Channel(const Channel&);
 		Channel(Channel&& rhs);
 	};
+
+	// Group-Level Stats
+	struct Stats
+	{
+		TimePoint					playback_start_;
+		ClockDuration				prev_elapsed_;
+	} stats_;
 
 	void GatherStats(const Channel& chan, size_t bytes_sent);
 
@@ -115,24 +144,11 @@ private:
 
 	static bool ComparePacketTimes(const ChannelPtrs::value_type&, const ChannelPtrs::value_type&);
 
-	typedef boost::chrono::steady_clock timer_clock;
-	typedef boost::chrono::time_point<timer_clock> tp;
-	tp playback_start_;
-
-	struct BasicStat
-	{
-		BasicStat(tp send_time, size_t bytes_sent) : send_time_(send_time), bytes_sent_(bytes_sent) {}
-		tp				send_time_;
-		size_t			bytes_sent_;
-	};
-	typedef std::list<BasicStat> BasicStats;
 	typedef std::string ChannelID;
 	ChannelID GetChannelID(const Channel& rhs)
 	{
 		return rhs.name_;
 	}
-	typedef std::unordered_map<ChannelID, BasicStats> ChannelStats;
-	ChannelStats raw_stats_;
 };
 
 #endif 

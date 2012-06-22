@@ -5,12 +5,15 @@
 #include <cstdint>
 #include <queue>
 #include <boost/thread.hpp>
+#include <boost/chrono.hpp>
 
 #if defined( WIN32 ) || defined( _WIN32 ) || defined( __WIN32__ )
 #	include <WinSock2.h>
 #	include <Windows.h>
 #	include <WinBase.h>
 #endif
+
+
 
 namespace msg
 {
@@ -30,21 +33,49 @@ namespace msg
 		~ThreadDie() {};
 	};
 
+	class ThreadDead : public BasicMessage
+	{
+	public:
+		void Handle(MessageHandler*);
+		~ThreadDead() {};
+		std::string id_;
+	};
+
 	class RequestProgress : public BasicMessage
 	{
 	public:
+		enum Type { total_progress, indiv_progress } type_;
+		RequestProgress(Type type) : type_(type) {};
+
 		void Handle(MessageHandler*);
 	};
-	class Progress : public BasicMessage
+
+	class GroupProgress : public BasicMessage
 	{
 	public:
+		GroupProgress() : cur_src_byte_(0), max_src_byte_(0), bytes_sent_(0) {};
 		void Handle(MessageHandler*);
 
-		std::string ctx_;
-		std::string channel_;
-		uint64_t	cur_byte_;
-		uint64_t	max_byte_;
-		std::string packet_time_;
+		std::string						group_;
+		uint64_t						cur_src_byte_;
+		uint64_t						max_src_byte_;
+		uint64_t						bytes_sent_;
+		boost::chrono::milliseconds		ttl_elapsed_;
+		std::string						next_packet_;
+	};
+
+	class ChannelProgress : public BasicMessage
+	{
+	public:
+		ChannelProgress() : cur_src_byte_(0), max_src_byte_(0), bytes_sent_(0) {};
+		void Handle(MessageHandler*);
+
+		std::string						group_;
+		std::string						channel_;
+		uint64_t						cur_src_byte_;
+		uint64_t						max_src_byte_;
+		uint64_t						bytes_sent_;
+		std::string						packet_time_;
 	};
 
 	class TogglePause : public BasicMessage
@@ -52,6 +83,8 @@ namespace msg
 	public:
 		void Handle(MessageHandler*);
 	};
+
+
 
 	//class PausePlayback : public BasicMessage
 	//{
@@ -69,11 +102,12 @@ namespace msg
 	{
 	public:
 		virtual void HandleThreadDie(ThreadDie*) {};
-		virtual void HandleProgressReport(Progress*) {};
+		virtual void HandleThreadDead(ThreadDead*) {};
+		virtual void HandleGroupProgressReport(GroupProgress*) {};
+		virtual void HandleChannelProgressReport(ChannelProgress*) {};
 		virtual void HandleTogglePause(TogglePause*) {};
 		virtual void HandleRequestProgress(RequestProgress*) {};
 	};
-
 
 	class non_signaling_policy
 	{
