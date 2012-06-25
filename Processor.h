@@ -97,10 +97,13 @@ private:
 
 		Source() : ttl_bytes_(0), cur_byte_(0) {};
 		Source(const std::string& cap_file);
-		const uint64_t		ttl_bytes_;
-		std::vector<char>	cur_packet_;
-		PacketTime			cur_packet_time_;
-		uint64_t			cur_byte_;
+		const uint64_t		ttl_bytes_;				// cap file total size
+		uint64_t			cur_byte_;				// current file position
+//		std::vector<char>	cur_packet_;
+		std::vector<char>	packet_buf_;			// packet buffer
+		uint64_t			packet_size_;			// size of current packet
+
+		PacketTime			cur_packet_time_;		// time of current (next) packet
 
 		unsigned ReadNext();
 	private:

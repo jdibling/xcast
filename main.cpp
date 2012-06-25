@@ -137,7 +137,7 @@ void App::HandleGroupProgressReport(msg::GroupProgress* prog)
 	cout << "***\t" 
 		<< prog->group_ << "\t" 
 		<< as_bytes(prog->bytes_sent_,true) << " Sent (%" << setw(3) << (int)floor((float(prog->cur_src_byte_)/float(prog->max_src_byte_))*100.0f) << ")" << "\t" 
-		<< as_bytes(speed) << "/sec\t" 
+		<< as_bytes(speed*8,true) << "/sec\t" 
 		<< "Next: " << prog->next_packet_ << "\t"
 		<< endl;
 }

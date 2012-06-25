@@ -58,7 +58,10 @@ GroupProcessor::Source::Source(const std::string& cap)
 	size_t a = fs.tellg();
 	fs.seekg(0, ios::end);
 	size_t b = fs.tellg();
-	return static_cast<uint64_t>(b-a);}())
+	return static_cast<uint64_t>(b-a);
+}	()),
+	packet_buf_(64 * 1024, 0),
+	packet_size_(0)
 {
 	// Open the cap file for read
 	std::string cap_f = cap;
@@ -66,25 +69,24 @@ GroupProcessor::Source::Source(const std::string& cap)
 	if( rc == MIS::ERR::NOT_FOUND )
 		throwx(dibcore::ex::misapi_error("CaptureApi::Open", rc, cap));
 	// Set up the read buffer
-	cur_packet_.reserve(64 * 1024);
-	cur_packet_.resize(0);
+	packet_buf_.resize(packet_buf_.capacity());
 	// Read the first packet in to the buffer
 	ReadNext();
 }
 
 unsigned GroupProcessor::Source::ReadNext()
 {
-	size_t last_size = cur_packet_.size();
-	cur_packet_.resize(cur_packet_.capacity());
+	size_t last_size = packet_size_;
+	packet_size_ = 0;
 
 	int bytes_read = 0;
-	unsigned rc = cap_.ReadPacket(&cur_packet_[0], static_cast<unsigned>(cur_packet_.capacity()), &bytes_read);
+	unsigned rc = cap_.ReadPacket(&packet_buf_[0], static_cast<unsigned>(packet_buf_.size()), &bytes_read);
 
 	switch( rc )
 	{
 	case MIS::ERR::SUCCESS :
 		cur_byte_ += last_size;
-		cur_packet_.resize(bytes_read);
+		packet_size_ = bytes_read;
 		rc = cap_.GetCurrentPacketTime(&cur_packet_time_.m_, &cur_packet_time_.d_, &cur_packet_time_.hh_, &cur_packet_time_.mm_, &cur_packet_time_.ss_, &cur_packet_time_.ms_);
 		if( rc != MIS::ERR::SUCCESS )
 			throwx(dibcore::ex::misapi_error("CaptureApi.GetCurrentPacketTime", rc));
@@ -235,7 +237,7 @@ void GroupProcessor::ProcessPacket()
 
 	///***  SEND PACKET ***///
 	Channel& chan = *it->second.get();
-	size_t bytes_sent = chan.conn_.sock_.send_to(boost::asio::buffer(chan.src_.cur_packet_), chan.conn_.group_);
+	size_t bytes_sent = chan.conn_.sock_.send_to(boost::asio::buffer(chan.src_.packet_buf_, chan.src_.packet_size_), chan.conn_.group_);
 	if( !bytes_sent )
 			throwx(dibcore::ex::generic_error("No Bytes Sent"));
 
