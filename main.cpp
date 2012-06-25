@@ -23,6 +23,11 @@ using namespace std;
 #include <core/core.h>
 using dibcore::util::Formatter;
 
+extern unsigned 
+	ver_major = 0,
+	ver_minor = 1,
+	ver_build = 1;
+
 string as_bytes(__int64 bytes, bool as_bits = false, std::streamsize width = 3)
 {
 	char b = as_bits ? 'b' : 'B';
@@ -159,6 +164,7 @@ void App::HandleTogglePause(msg::TogglePause* toggle)
 
 void App::run()
 {
+	cout << "xcast v. " << ver_major << "." << ver_minor << " (Build " << ver_build << ")" << endl;
 	///*** Start Processor Threads (1 per channel-group) ***///
 	for( int i = 0; i < 1; ++i )
 	{
