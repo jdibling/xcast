@@ -7,6 +7,11 @@ BasicMessage::~BasicMessage()
 }
 
 ///*** MESSAGE HANDLER DISPATCHERS ***///
+void HeartBeat::Handle(MessageHandler* handler)
+{
+	handler->HandleHeartBeat(this);
+}
+
 void ThreadDie::Handle(MessageHandler* handler) 
 {
 	handler->HandleThreadDie(this);

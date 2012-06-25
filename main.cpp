@@ -63,6 +63,7 @@ public:
 	void HandleGroupProgressReport(msg::GroupProgress*);
 	void HandleChannelProgressReport(msg::ChannelProgress*);
 	void HandleTogglePause(msg::TogglePause*);
+	void HandleHeartBeat(msg::HeartBeat*);
 
 private:
 	enum State { run_state, stop_state }		state_;
@@ -75,6 +76,14 @@ private:
 	GroupThreads								grp_threads_;
 };
 
+void App::HandleHeartBeat(msg::HeartBeat* hb)
+{
+	for( GroupThreads::ThreadVec::iterator thread = grp_threads_.threads_.begin(); thread != grp_threads_.threads_.end(); ++thread )
+	{
+		thread->ctx_->oob_queue_->push(unique_ptr<msg::BasicMessage>(new msg::RequestProgress(msg::RequestProgress::total_progress)));
+	}
+
+}
 void App::HandleThreadDie(msg::ThreadDie* die)
 {
 	cout << "QUIT" << endl;
@@ -110,8 +119,6 @@ void App::HandleThreadDead(msg::ThreadDead* dead)
 
 void App::HandleRequestProgress(msg::RequestProgress* prog)
 {
-	cout << "STATS" << endl;
-
 	// tell every proc thread to send stats
 	for( GroupThreads::ThreadVec::iterator thread = grp_threads_.threads_.begin(); thread != grp_threads_.threads_.end(); ++thread )
 	{

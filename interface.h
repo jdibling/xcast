@@ -25,6 +25,7 @@ private:
 	void ProcessOOBEvent();
 	void ProcessInterfaceEvent();
 		void ProcessInterfaceEvent_KeyPress(const INPUT_RECORD& ir);
+	void ProcessHeartBeat();
 
 	void HandleThreadDie(msg::ThreadDie* die);
 

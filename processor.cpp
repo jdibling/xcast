@@ -174,13 +174,15 @@ void GroupProcessor::HandleRequestProgress(msg::RequestProgress* req)
 		grp_prog->cur_src_byte_ += ch.src_.cur_byte_;
 		grp_prog->max_src_byte_ += ch.src_.ttl_bytes_;
 
-		server_queue_->push(unique_ptr<msg::BasicMessage>(std::move(ch_prog)));
+		if( req->type_ == msg::RequestProgress::indiv_progress )
+			server_queue_->push(unique_ptr<msg::BasicMessage>(std::move(ch_prog)));
 	});
 
 	if( !packet_times.empty() )
 		grp_prog->next_packet_ = packet_times.begin()->format();
 
-	server_queue_->push(unique_ptr<msg::BasicMessage>(std::move(grp_prog)));
+	if( req->type_ == msg::RequestProgress::total_progress )
+		server_queue_->push(unique_ptr<msg::BasicMessage>(std::move(grp_prog)));
 }
 
 bool GroupProcessor::Source::PacketTime::operator<(const PacketTime& rhs) const

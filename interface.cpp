@@ -82,6 +82,7 @@ void InterfaceProcessor::ProcessInterfaceEvent_KeyPress(const INPUT_RECORD& ir)
 
 		case 'S' :	// stats command
 			server_queue_->push(unique_ptr<msg::RequestProgress>(new msg::RequestProgress(msg::RequestProgress::indiv_progress)));
+			server_queue_->push(unique_ptr<msg::RequestProgress>(new msg::RequestProgress(msg::RequestProgress::total_progress)));
 			break;
 
 		case 'P' :	// Pause
@@ -90,6 +91,11 @@ void InterfaceProcessor::ProcessInterfaceEvent_KeyPress(const INPUT_RECORD& ir)
 
 		}
 	}
+}
+
+void InterfaceProcessor::ProcessHeartBeat()
+{
+	server_queue_->push(unique_ptr<msg::HeartBeat>(new msg::HeartBeat()));
 }
 
 void InterfaceProcessor::HandleThreadDie(msg::ThreadDie*)
@@ -133,9 +139,11 @@ void InterfaceProcessor::operator()()
 		HANDLE h[] = {oob_queue_->get_native_handle(), stdin_h_};
 		DWORD h_n = sizeof(h)/sizeof(h[0]);
 
+		DWORD hb_timeout = 1000;
+
 		while( state_ != die_state )
 		{
-			DWORD rc = WaitForMultipleObjects(h_n, h, 0, INFINITE);
+			DWORD rc = WaitForMultipleObjects(h_n, h, 0, hb_timeout);
 			switch( rc )
 			{
 			case WAIT_OBJECT_0 :		// OOB Message Event
@@ -144,6 +152,10 @@ void InterfaceProcessor::operator()()
 
 			case WAIT_OBJECT_0 + 1 :	// Interface Event
 				ProcessInterfaceEvent();
+				break;
+
+			case WAIT_TIMEOUT :			// HB timeout
+				ProcessHeartBeat();
 				break;
 			}
 		

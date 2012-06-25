@@ -26,6 +26,13 @@ namespace msg
 		virtual ~BasicMessage() = 0;
 	};
 
+	class HeartBeat : public BasicMessage
+	{
+	public:
+		void Handle(MessageHandler*);
+		~HeartBeat() {};
+	};
+
 	class ThreadDie : public BasicMessage
 	{
 	public:
@@ -101,6 +108,7 @@ namespace msg
 	class MessageHandler
 	{
 	public:
+		virtual void HandleHeartBeat(HeartBeat*) {};
 		virtual void HandleThreadDie(ThreadDie*) {};
 		virtual void HandleThreadDead(ThreadDead*) {};
 		virtual void HandleGroupProgressReport(GroupProgress*) {};
