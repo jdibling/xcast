@@ -26,7 +26,7 @@ using dibcore::util::Formatter;
 extern unsigned 
 	ver_major = 0,
 	ver_minor = 1,
-	ver_build = 1;
+	ver_build = 2;
 
 string as_bytes(__int64 bytes, bool as_bits = false, std::streamsize width = 3)
 {
