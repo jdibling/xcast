@@ -144,6 +144,7 @@
     <ClCompile Include="options.cpp" />
     <ClCompile Include="processor.cpp" />
     <ClCompile Include="utils.cpp" />
+    <ClCompile Include="xcast.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Channels.h" />

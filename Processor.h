@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <list>
 
+#include "xcast.h"
 #include "msg.h"
 #include "options.h"
 
@@ -61,11 +62,15 @@ private:
 	void ProcessOOBQueue();
 	void ProcessPacket();
 
-	void HandleTogglePause(msg::TogglePause* toggle_pause);
-	void HandleThreadDie(msg::ThreadDie* die);
-	virtual void HandleRequestProgress(msg::RequestProgress* req_prog);
+	void HandleTogglePause(const msg::TogglePause& toggle_pause);
+		void TogglePause();
+		void SetPauseState(bool paused);
+	void HandleThreadDie(const msg::ThreadDie& die);
+	void HandleRequestProgress(const msg::RequestProgress& req_prog);
+	void HandleSetPauseState(const msg::SetPauseState& set);
 
 	enum State { play_state, pause_state, die_state } state_;
+	inline bool IsRunState() { return state_ != die_state; }
 
 	std::shared_ptr<msg::MsgQueue>	server_queue_;
 	opts::Options					opts_;
@@ -88,12 +93,6 @@ private:
 	class Source
 	{
 	public:
-		struct PacketTime
-		{
-			bool operator<(const PacketTime& rhs) const;
-			int	m_, d_, hh_, mm_, ss_, ms_;
-			std::string format() const;
-		};
 
 		Source() : ttl_bytes_(0), cur_byte_(0) {};
 		Source(const std::string& cap_file);
@@ -103,7 +102,7 @@ private:
 		std::vector<char>	packet_buf_;			// packet buffer
 		uint64_t			packet_size_;			// size of current packet
 
-		PacketTime			cur_packet_time_;		// time of current (next) packet
+		xcast::PacketTime	cur_packet_time_;		// time of current (next) packet
 
 		unsigned ReadNext();
 	private:

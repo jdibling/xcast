@@ -33,7 +33,7 @@ void GroupProcessor::ProcessOOBQueue()
 	{
 		std::unique_ptr<msg::BasicMessage> oob;
 		oob_queue_->wait_and_pop(oob);
-		oob->Handle(this);
+		oob->Handle(*this);
 	}
 }
 
@@ -126,12 +126,31 @@ void GroupProcessor::Teardown()
 
 }
 
-void GroupProcessor::HandleThreadDie(msg::ThreadDie*)
+void GroupProcessor::HandleThreadDie(const msg::ThreadDie&)
 {
 	state_ = die_state;
 }
 
-void GroupProcessor::HandleTogglePause(msg::TogglePause*)
+void GroupProcessor::HandleSetPauseState(const msg::SetPauseState& set)
+{
+	if( !IsRunState() )
+		return;
+
+	SetPauseState(set.paused_);
+	server_queue_->push(unique_ptr<msg::BasicMessage>(set.paused_ ? static_cast<msg::BasicMessage*>(new msg::Paused(group_name_)) : static_cast<msg::BasicMessage*>(new msg::Resumed(group_name_))));
+}
+
+
+void GroupProcessor::HandleTogglePause(const msg::TogglePause&)
+{
+	if( !IsRunState() )
+		return;
+
+	TogglePause();
+	server_queue_->push(unique_ptr<msg::BasicMessage>(state_ == pause_state ? static_cast<msg::BasicMessage*>(new msg::Paused(group_name_)) : static_cast<msg::BasicMessage*>(new msg::Resumed(group_name_))));
+}
+
+void GroupProcessor::TogglePause()
 {
 	switch( state_ )
 	{
@@ -148,16 +167,29 @@ void GroupProcessor::HandleTogglePause(msg::TogglePause*)
 	}
 }
 
-void GroupProcessor::HandleRequestProgress(msg::RequestProgress* req)
+void GroupProcessor::SetPauseState(bool paused)
 {
-	TimePoint	now = Clock::now();
+	if( state_ == die_state )
+		return;
 
+	bool toggle = paused ? state_ == play_state : state_ == pause_state;
+	if( toggle )
+		TogglePause();
+}
+
+void GroupProcessor::HandleRequestProgress(const msg::RequestProgress& req)
+{
 	unique_ptr<msg::GroupProgress> grp_prog(new msg::GroupProgress());
 	grp_prog->group_ = group_name_;
-	grp_prog->ttl_elapsed_ = boost::chrono::duration_cast<boost::chrono::milliseconds>(stats_.prev_elapsed_ + (now - stats_.playback_start_) );
-	std::set<Source::PacketTime> packet_times;
+	grp_prog->ttl_elapsed_ = boost::chrono::duration_cast<boost::chrono::milliseconds>(stats_.prev_elapsed_ );
+	if( state_ == play_state )
+	{
+		grp_prog->ttl_elapsed_ += boost::chrono::duration_cast<boost::chrono::milliseconds>(Clock::now() - stats_.playback_start_);
+	}
+	
+	std::set<xcast::PacketTime> packet_times;
 
-	for_each( channels_.begin(), channels_.end(), [this, &grp_prog, &now, &packet_times, &req](ChannelPtrs::value_type& that)
+	for_each( channels_.begin(), channels_.end(), [this, &grp_prog, &packet_times, &req](ChannelPtrs::value_type& that)
 	{
 		unique_ptr<msg::ChannelProgress> ch_prog(new msg::ChannelProgress());
 		const Channel& ch = *that.second.get();
@@ -176,50 +208,20 @@ void GroupProcessor::HandleRequestProgress(msg::RequestProgress* req)
 		grp_prog->cur_src_byte_ += ch.src_.cur_byte_;
 		grp_prog->max_src_byte_ += ch.src_.ttl_bytes_;
 
-		if( req->type_ == msg::RequestProgress::indiv_progress )
+		if( req.type_ == msg::RequestProgress::indiv_progress )
 			server_queue_->push(unique_ptr<msg::BasicMessage>(std::move(ch_prog)));
 	});
 
 	if( !packet_times.empty() )
 		grp_prog->next_packet_ = packet_times.begin()->format();
 
-	if( req->type_ == msg::RequestProgress::total_progress )
+	if( req.type_ == msg::RequestProgress::total_progress )
 		server_queue_->push(unique_ptr<msg::BasicMessage>(std::move(grp_prog)));
 }
 
-bool GroupProcessor::Source::PacketTime::operator<(const PacketTime& rhs) const
-{
-	if( m_ != rhs.m_ )		
-		return m_ < rhs.m_;
-	if( d_ != rhs.d_ )		
-		return d_ < rhs.d_;
-	if( hh_ != rhs.hh_ )	
-		return hh_ < rhs.hh_;
-	if( mm_ != rhs.mm_ )		
-		return mm_ < rhs.mm_;
-	if( ss_ != rhs.ss_ )		
-		return ss_ < rhs.ss_;					
-	return ms_ < rhs.ms_;
-}
-
-std::string GroupProcessor::Source::PacketTime::format() const
-{
-	stringstream ss;
-
-	ss 
-		<< setw(2) << setfill('0') << m_ << "/" 
-		<< setw(2) << setfill('0') << d_ << " " 
-		<< setw(2) << setfill('0') << hh_ << ":" 
-		<< setw(2) << setfill('0') << mm_ << ":" 
-		<< setw(2) << setfill('0') << ss_ << "." 
-		<< setw(3) << setfill('0') << ms_;
-	return ss.str();
-}
-
-
 bool GroupProcessor::ComparePacketTimes(const ChannelPtrs::value_type& lhs, const ChannelPtrs::value_type& rhs)
 {
-	Source::PacketTime 
+	xcast::PacketTime 
 		&l_pt = lhs.second->src_.cur_packet_time_, 
 		&r_pt = rhs.second->src_.cur_packet_time_;
 	return l_pt < r_pt;
@@ -234,6 +236,22 @@ void GroupProcessor::ProcessPacket()
 	ChannelPtrs::iterator it = std::min_element(channels_.begin(), channels_.end(), &GroupProcessor::ComparePacketTimes);
 	if( it == channels_.end() )
 		throwx(dibcore::ex::generic_error("Internal Malfunction"));
+
+	const xcast::PacketTime& cur_pt = it->second->src_.cur_packet_time_;
+
+	// find next time to pause
+	opts::PacketTimes::const_iterator next_pause = std::min_element(opts_.pauses_.begin(), opts_.pauses_.end(), std::less<xcast::PacketTime>());
+	if( next_pause != opts_.pauses_.end() )
+	{
+		if( (*next_pause) < cur_pt )
+		{
+			///*** AUTO-PAUSE HERE ***///
+			SetPauseState(true);
+			server_queue_->push(unique_ptr<msg::AutoPaused>(new msg::AutoPaused(cur_pt, GetChannelID(*it->second), it->first)));
+			opts_.pauses_.erase(next_pause);
+			return;
+		}
+	}
 
 	///***  SEND PACKET ***///
 	Channel& chan = *it->second.get();

@@ -7,38 +7,57 @@ BasicMessage::~BasicMessage()
 }
 
 ///*** MESSAGE HANDLER DISPATCHERS ***///
-void HeartBeat::Handle(MessageHandler* handler)
+void HeartBeat::Handle(MessageHandler& handler)
 {
-	handler->HandleHeartBeat(this);
+	handler.HandleHeartBeat(*this);
 }
 
-void ThreadDie::Handle(MessageHandler* handler) 
+void ThreadDie::Handle(MessageHandler& handler) 
 {
-	handler->HandleThreadDie(this);
+	handler.HandleThreadDie(*this);
 }
 
-void ThreadDead::Handle(MessageHandler* handler) 
+void ThreadDead::Handle(MessageHandler& handler) 
 {
-	handler->HandleThreadDead(this);
+	handler.HandleThreadDead(*this);
 }
 
-void GroupProgress::Handle(MessageHandler* handler) 
+void GroupProgress::Handle(MessageHandler& handler) 
 {
-	handler->HandleGroupProgressReport(this);
+	handler.HandleGroupProgressReport(*this);
 }
 
-void ChannelProgress::Handle(MessageHandler* handler) 
+void ChannelProgress::Handle(MessageHandler& handler) 
 {
-	handler->HandleChannelProgressReport(this);
+	handler.HandleChannelProgressReport(*this);
 }
 
-void TogglePause::Handle(MessageHandler* handler)
+void RequestProgress::Handle(MessageHandler& handler) 
 {
-	handler->HandleTogglePause(this);
+	handler.HandleRequestProgress(*this);
 }
 
-void RequestProgress::Handle(MessageHandler* handler) 
+void TogglePause::Handle(MessageHandler& handler)
 {
-	handler->HandleRequestProgress(this);
+	handler.HandleTogglePause(*this);
 }
 
+void AutoPaused::Handle(MessageHandler& handler) 
+{
+	handler.HandleAutoPaused(*this);
+}
+
+void SetPauseState::Handle(MessageHandler& handler)
+{
+	handler.HandleSetPauseState(*this);
+}
+
+void Paused::Handle(MessageHandler& handler)
+{
+	handler.HandlePaused(*this);
+}
+
+void Resumed::Handle(MessageHandler& handler)
+{
+	handler.HandleResumed(*this);
+}

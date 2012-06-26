@@ -13,6 +13,8 @@
 #	include <WinBase.h>
 #endif
 
+#include "xcast.h"
+
 
 
 namespace msg
@@ -22,28 +24,28 @@ namespace msg
 	class BasicMessage
 	{
 	public:
-		virtual void Handle(MessageHandler*) = 0;
+		virtual void Handle(MessageHandler&) = 0;
 		virtual ~BasicMessage() = 0;
 	};
 
 	class HeartBeat : public BasicMessage
 	{
 	public:
-		void Handle(MessageHandler*);
+		void Handle(MessageHandler&);
 		~HeartBeat() {};
 	};
 
 	class ThreadDie : public BasicMessage
 	{
 	public:
-		void Handle(MessageHandler*);
+		void Handle(MessageHandler&);
 		~ThreadDie() {};
 	};
 
 	class ThreadDead : public BasicMessage
 	{
 	public:
-		void Handle(MessageHandler*);
+		void Handle(MessageHandler&);
 		~ThreadDead() {};
 		std::string id_;
 	};
@@ -54,14 +56,14 @@ namespace msg
 		enum Type { total_progress, indiv_progress } type_;
 		RequestProgress(Type type) : type_(type) {};
 
-		void Handle(MessageHandler*);
+		void Handle(MessageHandler&);
 	};
 
 	class GroupProgress : public BasicMessage
 	{
 	public:
 		GroupProgress() : cur_src_byte_(0), max_src_byte_(0), bytes_sent_(0) {};
-		void Handle(MessageHandler*);
+		void Handle(MessageHandler&);
 
 		std::string						group_;
 		uint64_t						cur_src_byte_;
@@ -75,7 +77,7 @@ namespace msg
 	{
 	public:
 		ChannelProgress() : cur_src_byte_(0), max_src_byte_(0), bytes_sent_(0) {};
-		void Handle(MessageHandler*);
+		void Handle(MessageHandler&);
 
 		std::string						group_;
 		std::string						channel_;
@@ -88,33 +90,69 @@ namespace msg
 	class TogglePause : public BasicMessage
 	{
 	public:
-		void Handle(MessageHandler*);
+		void Handle(MessageHandler&);
 	};
 
+	class SetPauseState : public BasicMessage
+	{
+	public:
+		SetPauseState(bool paused) : paused_(paused) {};
+		~SetPauseState() {};
+		void Handle(MessageHandler&);
+		bool paused_;
+	};
 
+	class AutoPaused : public BasicMessage
+	{
+	public:
+		AutoPaused(const xcast::PacketTime& pt, const std::string& grp, const std::string& chan)
+			:	pt_(pt), grp_(grp), chan_(chan) 
+		{
+		};
+		xcast::PacketTime pt_;
+		std::string chan_, grp_;
+		void Handle(MessageHandler&);
+		~AutoPaused() {};
+	};
 
-	//class PausePlayback : public BasicMessage
-	//{
-	//public:
-	//	void Handle(MessageHandler*);
-	//};
+	class Paused : public BasicMessage
+	{
+	public:
+		Paused(const std::string& grp)
+			:	grp_(grp)
+		{
+		};
+		std::string grp_;
+		void Handle(MessageHandler&);
+		~Paused() {};
+	};
 
-	//class ResumePlayback : public BasicMessage
-	//{
-	//public:
-	//	void Handle(MessageHandler*);
-	//};
+	class Resumed : public BasicMessage
+	{
+	public:
+		Resumed(const std::string& grp)
+			:	grp_(grp)
+		{
+		};
+		std::string grp_;
+		void Handle(MessageHandler&);
+		~Resumed() {};
+	};
 
 	class MessageHandler
 	{
 	public:
-		virtual void HandleHeartBeat(HeartBeat*) {};
-		virtual void HandleThreadDie(ThreadDie*) {};
-		virtual void HandleThreadDead(ThreadDead*) {};
-		virtual void HandleGroupProgressReport(GroupProgress*) {};
-		virtual void HandleChannelProgressReport(ChannelProgress*) {};
-		virtual void HandleTogglePause(TogglePause*) {};
-		virtual void HandleRequestProgress(RequestProgress*) {};
+		virtual void HandleHeartBeat(const HeartBeat&) {};
+		virtual void HandleThreadDie(const ThreadDie&) {};
+		virtual void HandleThreadDead(const ThreadDead&) {};
+		virtual void HandleGroupProgressReport(const GroupProgress&) {};
+		virtual void HandleChannelProgressReport(const ChannelProgress&) {};
+		virtual void HandleRequestProgress(const RequestProgress&) {};
+		virtual void HandleAutoPaused(const AutoPaused&) {};
+		virtual void HandleTogglePause(const TogglePause&) {};
+		virtual void HandleSetPauseState(const SetPauseState&) {};
+		virtual void HandlePaused(const Paused&) {};
+		virtual void HandleResumed(const Resumed&) {};
 	};
 
 	class non_signaling_policy

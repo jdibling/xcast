@@ -31,7 +31,7 @@ void InterfaceProcessor::ProcessOOBEvent()
 	{
 		std::unique_ptr<msg::BasicMessage> oob;
 		oob_queue_->wait_and_pop(oob);
-		oob->Handle(this);
+		oob->Handle(*this);
 	}
 }
 
@@ -98,7 +98,7 @@ void InterfaceProcessor::ProcessHeartBeat()
 	server_queue_->push(unique_ptr<msg::HeartBeat>(new msg::HeartBeat()));
 }
 
-void InterfaceProcessor::HandleThreadDie(msg::ThreadDie*)
+void InterfaceProcessor::HandleThreadDie(const msg::ThreadDie&)
 {
 	state_ = die_state;
 }
@@ -115,7 +115,7 @@ void InterfaceProcessor::Init()
 	if( (stdin_h_ = GetStdHandle(STD_INPUT_HANDLE)) == INVALID_HANDLE_VALUE ) 
 		throwx(ex::generic_error("Can't Get StdIn Handle"));	
 	// Save the current input mode, to be restored on exit. 
- 	if( !GetConsoleMode(stdin_h_, &old_con_mode_) ) 
+	if( !GetConsoleMode(stdin_h_, &old_con_mode_) ) 
 		throwx(ex::generic_error("Can't Get Console Mode"));
 	// Enable the window and mouse input events.  
 	DWORD new_mode = ENABLE_WINDOW_INPUT | ENABLE_MOUSE_INPUT; 

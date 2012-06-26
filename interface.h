@@ -27,7 +27,7 @@ private:
 		void ProcessInterfaceEvent_KeyPress(const INPUT_RECORD& ir);
 	void ProcessHeartBeat();
 
-	void HandleThreadDie(msg::ThreadDie* die);
+	void HandleThreadDie(const msg::ThreadDie& die);
 
 	enum State { run_state, die_state } state_;
 

@@ -7,6 +7,7 @@
 #include <functional>
 #include <vector>
 #include "utils.h"
+#include "xcast.h"
 
 namespace opts
 {
@@ -18,10 +19,12 @@ namespace opts
 		unsigned port_;
 	};
 	typedef std::vector<ChannelDesc> ChannelDescs;
+	typedef std::vector<xcast::PacketTime> PacketTimes;
 
 	struct Options
 	{
 		ChannelDescs	channels_;
+		PacketTimes		pauses_;
 	};
 
 	Options parse_command_line(int ac, char* av[]);

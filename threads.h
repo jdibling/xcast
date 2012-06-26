@@ -28,7 +28,7 @@ public:
 	
 	std::string ThreadID() const { return ctx_->ID(); }
 
-	void join();
+	void join() const;
 
 	unique_ptr<Context>			ctx_;
 	unique_ptr<boost::thread>	thread_;
@@ -38,7 +38,7 @@ private:
 	Thread<Context>& operator=(const Thread<Context>&);	// undefined -- not copy assignable
 };
 
-template<class Context> void Thread<Context>::join()
+template<class Context> void Thread<Context>::join() const
 {
 	thread_->join();
 }
@@ -49,12 +49,12 @@ class Threads
 public:
 	typedef vector<Thread<Context>> ThreadVec;
 	ThreadVec threads_;
-	void join_all();
+	void join_all() const;
 };
 
-template<class Context> void Threads<Context>::join_all()
+template<class Context> void Threads<Context>::join_all() const
 {
-	for( ThreadVec::iterator it = threads_.begin(); it != threads_.end(); ++it )
+	for( ThreadVec::const_iterator it = threads_.begin(); it != threads_.end(); ++it )
 		it->join();
 }
 
