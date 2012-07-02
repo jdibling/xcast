@@ -213,17 +213,17 @@ int main(int ac, char* av[])
 	}
 	catch( const dibcore::ex::silent_exception& )
 	{
-		return 1;
+		return 42;
 	}
 	catch( const dibcore::ex::generic_error& ex )
 	{
 		cerr << ex.what() << endl;
-		return 1;
+		return 43;
 	}
 	catch(...)
 	{
 		cerr << "Unhandled Exception" << endl;
-		return 2;
+		return 44;
 	}
 	
 	return 0; 

@@ -39,7 +39,7 @@ public:
 	OOBQueue										oob_queue_;
 	HANDLE											stdin_h_;
 	DWORD											old_con_mode_;
-
+	DWORD											stdin_file_type_;
 };
 
 #endif
