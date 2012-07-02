@@ -1,5 +1,6 @@
 #include "interface.h"
 #include "msg.h"
+#include "threads.h"
 #include <windows.h>
 using std::shared_ptr;
 #include <core/core.h>
@@ -59,6 +60,7 @@ void InterfaceProcessor::ProcessInterfaceEvent()
 			break; 
  
 		case FOCUS_EVENT:  // disregard focus events 
+			break;
  
 		case MENU_EVENT:   // disregard menu events 
 			break; 
@@ -113,14 +115,24 @@ void InterfaceProcessor::Init()
  
 	// Get the standard input handle. 
 	if( (stdin_h_ = GetStdHandle(STD_INPUT_HANDLE)) == INVALID_HANDLE_VALUE ) 
-		throwx(ex::generic_error("Can't Get StdIn Handle"));	
-	// Save the current input mode, to be restored on exit. 
-	if( !GetConsoleMode(stdin_h_, &old_con_mode_) ) 
-		throwx(ex::generic_error("Can't Get Console Mode"));
-	// Enable the window and mouse input events.  
-	DWORD new_mode = ENABLE_WINDOW_INPUT | ENABLE_MOUSE_INPUT; 
-	if( !SetConsoleMode(stdin_h_, new_mode) ) 
-		throwx(ex::generic_error("Unable To SetConsoleMode")); 
+		throwx(ex::generic_error("Can't Get StdIn Handle"));
+	file_type_ = GetFileType(stdin_h_);
+	if( file_type_ == FILE_TYPE_CHAR )
+	{
+		server_queue_->push(unique_ptr<msg::LogMessage>(new msg::LogMessage("Console Mode")));
+
+		// Save the current input mode, to be restored on exit. 
+		if( !GetConsoleMode(stdin_h_, &old_con_mode_) ) 
+			throwx(ex::generic_error("Can't Get Console Mode"));
+		// Enable the window and mouse input events.  
+		DWORD new_mode = ENABLE_WINDOW_INPUT | ENABLE_MOUSE_INPUT; 
+		if( !SetConsoleMode(stdin_h_, new_mode) ) 
+			throwx(ex::generic_error("Unable To SetConsoleMode")); 
+	}
+	else if( file_type_ == FILE_TYPE_PIPE )
+	{
+		server_queue_->push(unique_ptr<msg::LogMessage>(new msg::LogMessage("Pipe Mode")));
+	}
 }
 
 
@@ -130,39 +142,123 @@ void InterfaceProcessor::Teardown()
 		SetConsoleMode(stdin_h_, old_con_mode_);
 }
 
+class PipeProcessor 
+{
+public:
+	PipeProcessor(HANDLE pipe, std::shared_ptr<msg::MsgQueue> server_queue, InterfaceProcessor::OOBQueue monitor_queue)
+		:	pipe_h_(pipe),
+			server_queue_(server_queue),
+			monitor_queue_(monitor_queue)
+	{
+	}
+	PipeProcessor(PipeProcessor&& rhs)
+		:	pipe_h_(move(rhs.pipe_h_)),
+			server_queue_(move(rhs.server_queue_)),
+			monitor_queue_(move(rhs.monitor_queue_))
+	{
+	}
+
+	virtual ~PipeProcessor() {};
+	void operator()() ;
+private:
+	HANDLE pipe_h_;
+	std::shared_ptr<msg::MsgQueue>					server_queue_;
+	InterfaceProcessor::OOBQueue					monitor_queue_;	
+};
+
+void PipeProcessor::operator()()
+{
+	using dibcore::util::Formatter;
+
+	server_queue_->push(unique_ptr<msg::LogMessage>(new msg::LogMessage("S:PipeProcessor Running")));
+	monitor_queue_->push(unique_ptr<msg::LogMessage>(new msg::LogMessage("M:PipeProcessor Running")));
+
+	for( bool cont = true; cont; )
+	{
+		server_queue_->push(unique_ptr<msg::LogMessage>(new msg::LogMessage("S:PipeProcessor LOOP")));
+		//char buf[256] = {};
+		//DWORD bytes = 0;
+		//if( !ReadFile(pipe_h_, buf, sizeof(buf)/sizeof(buf[0]), &bytes, 0) )
+		//{
+		//	DWORD err = GetLastError();
+		//	server_queue_->push(unique_ptr<msg::LogMessage>(new msg::LogMessage(Formatter()<<"Error In ReadFile: " << err)));
+		//	monitor_queue_->push(unique_ptr<msg::ThreadDie>(new msg::ThreadDie()));
+		//	cont = false;
+		//	continue;
+		//}
+
+		string in_msg;
+		cin >> in_msg;
+
+		//string msg = Formatter() << "Recieved " << bytes << " bytes: '" << string(buf,bytes) << "'";
+		//server_queue_->push(unique_ptr<msg::LogMessage>(new msg::LogMessage(msg)));
+
+		string msg = Formatter() << "Recieved " << in_msg.length() << " bytes: '" << in_msg << "'";
+		server_queue_->push(unique_ptr<msg::LogMessage>(new msg::LogMessage(msg)));
+
+	}
+}
+
+
 void InterfaceProcessor::operator()() 
 {
 	try
 	{
 		Init();
 
-		HANDLE h[] = {oob_queue_->get_native_handle(), stdin_h_};
-		DWORD h_n = sizeof(h)/sizeof(h[0]);
-
-		DWORD hb_timeout = 1000;
-
-		while( state_ != die_state )
+		if( file_type_ == FILE_TYPE_CHAR )
 		{
-			DWORD rc = WaitForMultipleObjects(h_n, h, 0, hb_timeout);
-			switch( rc )
+			HANDLE h[] = {oob_queue_->get_native_handle(), stdin_h_};
+			DWORD h_n = sizeof(h)/sizeof(h[0]);
+
+			DWORD hb_timeout = 1000;
+
+			while( state_ != die_state )
 			{
-			case WAIT_OBJECT_0 :		// OOB Message Event
-				ProcessOOBEvent();
-				break;
+				DWORD rc = WaitForMultipleObjects(h_n, h, 0, hb_timeout);
+				switch( rc )
+				{
+				case WAIT_OBJECT_0 :		// OOB Message Event
+					ProcessOOBEvent();
+					break;
 
-			case WAIT_OBJECT_0 + 1 :	// Interface Event
-				ProcessInterfaceEvent();
-				break;
+				case WAIT_OBJECT_0 + 1 :	// Interface Event
+					ProcessInterfaceEvent();
+					break;
 
-			case WAIT_TIMEOUT :			// HB timeout
-				ProcessHeartBeat();
-				break;
-			}
+				case WAIT_TIMEOUT :			// HB timeout
+					ProcessHeartBeat();
+					break;
+				}
 		
+			}
+		}
+		else if( file_type_ == FILE_TYPE_PIPE )
+		{
+			Thread<PipeProcessor> pipe_thread(unique_ptr<PipeProcessor>(new PipeProcessor(stdin_h_, this->server_queue_, this->oob_queue_)));
+
+			while( state_ != die_state )
+			{
+				DWORD hb_timeout = 1000;
+				DWORD rc = WaitForSingleObject(oob_queue_->get_native_handle(), hb_timeout);
+				switch( rc )
+				{
+				case WAIT_OBJECT_0 :		// OOB Message Event
+					ProcessOOBEvent();
+					break;
+
+				case WAIT_TIMEOUT :			// HB timeout
+					ProcessHeartBeat();
+					break;
+				}		
+			}
+
+			pipe_thread.join();
 		}
 	}
-	catch(dibcore::ex::generic_error& ex)
+	catch(std::exception& ex)
 	{
+		server_queue_->push(unique_ptr<msg::LogMessage>(new msg::LogMessage(ex.what())));
 		cerr << ex.what();
 		Teardown();
 		throw;

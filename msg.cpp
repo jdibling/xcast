@@ -7,6 +7,11 @@ BasicMessage::~BasicMessage()
 }
 
 ///*** MESSAGE HANDLER DISPATCHERS ***///
+void LogMessage::Handle(MessageHandler& handler)
+{
+	handler.HandleLogMessage(*this);
+}
+
 void HeartBeat::Handle(MessageHandler& handler)
 {
 	handler.HandleHeartBeat(*this);

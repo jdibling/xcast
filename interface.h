@@ -36,9 +36,11 @@ private:
 	
 	std::shared_ptr<msg::MsgQueue>					server_queue_;
 public:
+	friend class PipeProcessor;
 	OOBQueue										oob_queue_;
 	HANDLE											stdin_h_;
 	DWORD											old_con_mode_;
+	DWORD											file_type_;
 
 };
 

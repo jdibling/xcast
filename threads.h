@@ -7,7 +7,7 @@ template<class Context>
 class Thread 
 {
 public:
-	Thread(unique_ptr<Context>&& rhs) 
+	Thread(std::unique_ptr<Context>&& rhs) 
 		:	ctx_(std::move(rhs)),
 			thread_(unique_ptr<boost::thread>(new boost::thread(boost::ref(*ctx_.get()))))
 	{
@@ -30,8 +30,8 @@ public:
 
 	void join() const;
 
-	unique_ptr<Context>			ctx_;
-	unique_ptr<boost::thread>	thread_;
+	std::unique_ptr<Context>			ctx_;
+	std::unique_ptr<boost::thread>	thread_;
 private:
 	Thread(const Thread<Context>&);						// undefined -- not copy constructible
 	Thread();											// undefined -- not default constructible
@@ -47,7 +47,7 @@ template<class Context>
 class Threads
 {
 public:
-	typedef vector<Thread<Context>> ThreadVec;
+	typedef std::vector<Thread<Context>> ThreadVec;
 	ThreadVec threads_;
 	void join_all() const;
 };

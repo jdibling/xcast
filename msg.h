@@ -28,6 +28,16 @@ namespace msg
 		virtual ~BasicMessage() = 0;
 	};
 
+	class LogMessage : public BasicMessage
+	{
+	public:
+		void Handle(MessageHandler&) ;
+		LogMessage(const std::string& msg) : msg_(msg) {};
+		virtual ~LogMessage() {};
+	
+		std::string msg_;
+	};
+
 	class HeartBeat : public BasicMessage
 	{
 	public:
@@ -143,6 +153,7 @@ namespace msg
 	{
 	public:
 		virtual void HandleHeartBeat(const HeartBeat&) {};
+		virtual void HandleLogMessage(const LogMessage&) {};
 		virtual void HandleThreadDie(const ThreadDie&) {};
 		virtual void HandleThreadDead(const ThreadDead&) {};
 		virtual void HandleGroupProgressReport(const GroupProgress&) {};

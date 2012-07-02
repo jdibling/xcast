@@ -59,6 +59,7 @@ public:
 	}
 	void run();
 
+	void HandleLogMessage(const msg::LogMessage& log);
 	void HandleThreadDie(const msg::ThreadDie&);
 	void HandleThreadDead(const msg::ThreadDead&);
 	void HandleRequestProgress(const msg::RequestProgress&);
@@ -80,6 +81,11 @@ private:
 	InterfaceThread							ifc_thread_;
 	GroupThreads								grp_threads_;
 };
+
+void App::HandleLogMessage(const msg::LogMessage& log)
+{
+	cout << "MESSAGE: '" << log.msg_ << "'" << endl;
+}
 
 void App::HandleAutoPaused(const msg::AutoPaused& ap) 
 {
