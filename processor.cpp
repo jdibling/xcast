@@ -273,23 +273,32 @@ void GroupProcessor::ProcessPacket()
 
 void GroupProcessor::operator()() 
 {
-	Init();
-
-	while( state_ != die_state )
+	try
 	{
-		ProcessOOBQueue();
-		if( state_ == die_state )
-			continue;
 
-		if( state_ == play_state )
+		Init();
+
+		while( state_ != die_state )
 		{
-			ProcessPacket();
-			//boost::this_thread::sleep(boost::posix_time::milliseconds(5));
+			ProcessOOBQueue();
+			if( state_ == die_state )
+				continue;
+
+			if( state_ == play_state )
+			{
+				ProcessPacket();
+				//boost::this_thread::sleep(boost::posix_time::milliseconds(5));
+			}
+
+			if( channels_.empty() )
+				state_ = die_state;		
 		}
 
-		if( channels_.empty() )
-			state_ = die_state;		
+		Teardown();
 	}
-
-	Teardown();
-}
+	catch( const std::exception& ex )
+	{
+		cerr << ex.what() << endl;
+		return;
+	}
+	}

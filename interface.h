@@ -41,7 +41,6 @@ public:
 	HANDLE											stdin_h_;
 	DWORD											old_con_mode_;
 	DWORD											file_type_;
-
 };
 
 #endif
