@@ -52,6 +52,8 @@ public:
 	std::string group_name_;
 
 private:
+	void LogMessage(const std::string& msg) const;
+
 	GroupProcessor(const GroupProcessor&);				// undefined -- not copy constructible
 	GroupProcessor();									// undefined -- not default constructible
 	GroupProcessor& operator=(const GroupProcessor&);	// undefined -- not copy assignable

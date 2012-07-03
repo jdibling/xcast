@@ -141,12 +141,13 @@ void App::HandleThreadDead(const msg::ThreadDead& dead)
 		return that.ThreadID() == dead.id_;
 	});
 
-	cout << "Group '" << dead.id_ << "' EOF." << endl;
 	thread->join();
+	cout << "Group '" << dead.id_ << "' EOF." << endl;
 	grp_threads_.threads_.erase(thread);
 	if( grp_threads_.threads_.empty() )
 	{
 		state_ = stop_state;
+		cout << "Application shutting down..." << endl;
 	}
 }
 
@@ -207,6 +208,7 @@ void App::run()
 		in_msg->Handle(*this);
 	}
 
+	cout << "Terminating Interface..." << endl;
 	ifc_thread_.ctx_->oob_queue_->push(unique_ptr<msg::BasicMessage>(new msg::ThreadDie));
 	ifc_thread_.join();
 

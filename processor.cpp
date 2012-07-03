@@ -9,6 +9,7 @@
 using namespace std;
 
 #include <core/core.h>
+using dibcore::util::Formatter;
 
 #include <boost/chrono.hpp>
 
@@ -118,12 +119,17 @@ void GroupProcessor::Init()
 	}
 }
 
+void GroupProcessor::LogMessage(const std::string& msg) const
+{
+	server_queue_->push(unique_ptr<msg::LogMessage>(new msg::LogMessage(msg)));
+}
+
 void GroupProcessor::Teardown()
 {
 	unique_ptr<msg::ThreadDead> dead(new msg::ThreadDead);
-	dead->id_ = this->group_name_;
+	dead->id_ = group_name_;
 	server_queue_->push(unique_ptr<msg::BasicMessage>(std::move(dead)));	
-
+	LogMessage(Formatter() << "Processor ' " << group_name_ << "' Teardown Complete");
 }
 
 void GroupProcessor::HandleThreadDie(const msg::ThreadDie&)
@@ -301,4 +307,4 @@ void GroupProcessor::operator()()
 		cerr << ex.what() << endl;
 		return;
 	}
-	}
+}

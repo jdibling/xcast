@@ -119,6 +119,7 @@ void InterfaceProcessor::ProcessHeartBeat()
 void InterfaceProcessor::HandleThreadDie(const msg::ThreadDie&)
 {
 	state_ = die_state;
+	cout << "Interface Set Term State" << endl;
 }
 
 void InterfaceProcessor::Init()
@@ -172,13 +173,15 @@ public:
 	PipeProcessor(PipeProcessor&& rhs)
 		:	pipe_h_(move(rhs.pipe_h_)),
 			server_queue_(move(rhs.server_queue_)),
-			monitor_queue_(move(rhs.monitor_queue_))
+			monitor_queue_(move(rhs.monitor_queue_)),
+			state_(run_state)
 	{
 	}
 
 	virtual ~PipeProcessor() {};
 	void operator()() ;
 private:
+	enum ThreadState { run_state, die_state}		state_;
 	HANDLE pipe_h_;
 	std::shared_ptr<msg::MsgQueue>					server_queue_;
 	InterfaceProcessor::OOBQueue					monitor_queue_;	
@@ -191,7 +194,17 @@ void PipeProcessor::operator()()
 	server_queue_->push(unique_ptr<msg::LogMessage>(new msg::LogMessage("S:PipeProcessor Running")));
 	monitor_queue_->push(unique_ptr<msg::LogMessage>(new msg::LogMessage("M:PipeProcessor Running")));
 
-	for( bool cont = true; cont; )
+	DWORD f=0, o_buf=0, i_buf=0, inst=0;
+	if( GetNamedPipeInfo(pipe_h_, &f, &o_buf, &i_buf, &inst) )
+	{
+		cout << "Named Pipe: f=" << showbase << hex << f << ", o_buf=" << o_buf << ", i_buf=" << i_buf << ", inst=" << inst << endl;
+	}
+	else
+	{
+		cout << "Anonymous Pipe" << endl;
+	}
+
+	while( state_ == run_state )
 	{
 		server_queue_->push(unique_ptr<msg::LogMessage>(new msg::LogMessage("S:PipeProcessor LOOP")));
 		char buf[256] = {};
@@ -201,7 +214,6 @@ void PipeProcessor::operator()()
 			DWORD err = GetLastError();
 			server_queue_->push(unique_ptr<msg::LogMessage>(new msg::LogMessage(Formatter()<<"Error In ReadFile: " << err)));
 			monitor_queue_->push(unique_ptr<msg::ThreadDie>(new msg::ThreadDie()));
-			cont = false;
 			continue;
 		}
 
@@ -219,13 +231,35 @@ void PipeProcessor::operator()()
 	}
 }
 
+struct PipeInst : public OVERLAPPED
+{
+	HANDLE				pipe_;
+	InterfaceProcessor*	proc_;
+	static const size_t buf_sz_ = 4096;
+	char				buf_[buf_sz_];
+
+};
+
+void InterfaceProcessor::CompletedPipeReadRoutine(DWORD err, DWORD bytes, OVERLAPPED* ovr)
+{
+	PipeInst* pi = static_cast<PipeInst*>(ovr);
+	cout << "Pipe Recv " << bytes << " bytes: '";
+	string in(pi->buf_, bytes);
+	cout << in;
+	cout << "'" << endl;
+
+	for_each( in.begin(), in.end(), [pi](char c)
+	{
+		pi->proc_->OnCommand(c);
+	});
+}
 
 void InterfaceProcessor::operator()() 
 {
+	Init();
+
 	try
 	{
-		Init();
-
 		if( file_type_ == FILE_TYPE_CHAR )
 		{
 			HANDLE h[] = {oob_queue_->get_native_handle(), stdin_h_};
@@ -255,12 +289,21 @@ void InterfaceProcessor::operator()()
 		}
 		else if( file_type_ == FILE_TYPE_PIPE )
 		{
-			Thread<PipeProcessor> pipe_thread(unique_ptr<PipeProcessor>(new PipeProcessor(stdin_h_, this->server_queue_, this->oob_queue_)));
+//			Thread<PipeProcessor> pipe_thread(unique_ptr<PipeProcessor>(new PipeProcessor(stdin_h_, this->server_queue_, this->oob_queue_)));
+			PipeInst pipe_inst;
+			pipe_inst.pipe_ = stdin_h_;
+			pipe_inst.proc_ = this;
 
 			while( state_ != die_state )
 			{
-				DWORD hb_timeout = 1000;
-				DWORD rc = WaitForSingleObject(oob_queue_->get_native_handle(), hb_timeout);
+				if( !ReadFileEx(stdin_h_, &pipe_inst.buf_[0], static_cast<DWORD>(PipeInst::buf_sz_), &pipe_inst, &CompletedPipeReadRoutine) )
+				{
+					cout << "Error : " << GetLastError() << " Reading From Pipe." << endl;
+					oob_queue_->push(unique_ptr<msg::ThreadDie>(new msg::ThreadDie()));
+				}
+				
+				static const DWORD hb_timeout = 1000;
+				DWORD rc = WaitForSingleObjectEx(oob_queue_->get_native_handle(), hb_timeout, TRUE);
 				switch( rc )
 				{
 				case WAIT_OBJECT_0 :		// OOB Message Event
@@ -270,10 +313,13 @@ void InterfaceProcessor::operator()()
 				case WAIT_TIMEOUT :			// HB timeout
 					ProcessHeartBeat();
 					break;
+
+				case WAIT_IO_COMPLETION:
+					break;
 				}		
 			}
 
-			pipe_thread.join();
+			//pipe_thread.join();
 		}
 	}
 	catch(std::exception& ex)
