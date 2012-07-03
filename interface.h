@@ -27,7 +27,10 @@ private:
 		void ProcessInterfaceEvent_KeyPress(const INPUT_RECORD& ir);
 	void ProcessHeartBeat();
 
+	void OnCommand(char c);
+
 	void HandleThreadDie(const msg::ThreadDie& die);
+	void HandleInternalCommand(const msg::InternalCommand& cmd);
 
 	enum State { run_state, die_state } state_;
 

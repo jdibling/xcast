@@ -76,23 +76,39 @@ void InterfaceProcessor::ProcessInterfaceEvent_KeyPress(const INPUT_RECORD& ir)
 {
 	if( !ir.Event.KeyEvent.bKeyDown )
 	{
-		switch( ir.Event.KeyEvent.wVirtualKeyCode )
-		{
-		case 'Q' :	// quit command
-			server_queue_->push(unique_ptr<msg::ThreadDie>(new msg::ThreadDie));
-			break;
-
-		case 'S' :	// stats command
-			server_queue_->push(unique_ptr<msg::RequestProgress>(new msg::RequestProgress(msg::RequestProgress::indiv_progress)));
-			server_queue_->push(unique_ptr<msg::RequestProgress>(new msg::RequestProgress(msg::RequestProgress::total_progress)));
-			break;
-
-		case 'P' :	// Pause
-			server_queue_->push(unique_ptr<msg::TogglePause>(new msg::TogglePause));
-			break;
-
-		}
+		if( ir.Event.KeyEvent.wVirtualKeyCode >= 'A' && ir.Event.KeyEvent.wVirtualKeyCode<= 'Z' )
+			OnCommand(static_cast<char>(LOBYTE(ir.Event.KeyEvent.wVirtualKeyCode)));
 	}
+}
+
+void InterfaceProcessor::OnCommand(char cmd)
+{
+	switch( cmd )
+	{
+	case 'Q' :	// quit command
+		server_queue_->push(unique_ptr<msg::ThreadDie>(new msg::ThreadDie));
+		break;
+
+	case 'S' :	// stats command
+		server_queue_->push(unique_ptr<msg::RequestProgress>(new msg::RequestProgress(msg::RequestProgress::indiv_progress)));
+		server_queue_->push(unique_ptr<msg::RequestProgress>(new msg::RequestProgress(msg::RequestProgress::total_progress)));
+		break;
+
+	case 'P' :	// Pause
+		server_queue_->push(unique_ptr<msg::TogglePause>(new msg::TogglePause));
+		break;
+
+	default:
+		break;
+	}
+}
+
+void InterfaceProcessor::HandleInternalCommand(const msg::InternalCommand& cmd)
+{
+	for_each(cmd.msg_.begin(), cmd.msg_.end(), [this](char c)
+	{
+		OnCommand(c);
+	});
 }
 
 void InterfaceProcessor::ProcessHeartBeat()
@@ -117,6 +133,7 @@ void InterfaceProcessor::Init()
 	if( (stdin_h_ = GetStdHandle(STD_INPUT_HANDLE)) == INVALID_HANDLE_VALUE ) 
 		throwx(ex::generic_error("Can't Get StdIn Handle"));
 	file_type_ = GetFileType(stdin_h_);
+
 	if( file_type_ == FILE_TYPE_CHAR )
 	{
 		server_queue_->push(unique_ptr<msg::LogMessage>(new msg::LogMessage("Console Mode")));
@@ -138,8 +155,9 @@ void InterfaceProcessor::Init()
 
 void InterfaceProcessor::Teardown()
 {
-	if( stdin_h_ != INVALID_HANDLE_VALUE )
+	if( stdin_h_ != INVALID_HANDLE_VALUE && file_type_ == FILE_TYPE_CHAR )
 		SetConsoleMode(stdin_h_, old_con_mode_);
+	server_queue_->push(unique_ptr<msg::LogMessage>(new msg::LogMessage("Interface Teardown")));
 }
 
 class PipeProcessor 
@@ -176,25 +194,27 @@ void PipeProcessor::operator()()
 	for( bool cont = true; cont; )
 	{
 		server_queue_->push(unique_ptr<msg::LogMessage>(new msg::LogMessage("S:PipeProcessor LOOP")));
-		//char buf[256] = {};
-		//DWORD bytes = 0;
-		//if( !ReadFile(pipe_h_, buf, sizeof(buf)/sizeof(buf[0]), &bytes, 0) )
-		//{
-		//	DWORD err = GetLastError();
-		//	server_queue_->push(unique_ptr<msg::LogMessage>(new msg::LogMessage(Formatter()<<"Error In ReadFile: " << err)));
-		//	monitor_queue_->push(unique_ptr<msg::ThreadDie>(new msg::ThreadDie()));
-		//	cont = false;
-		//	continue;
-		//}
+		char buf[256] = {};
+		DWORD bytes = 0;
+		if( !ReadFile(pipe_h_, buf, sizeof(buf)/sizeof(buf[0]), &bytes, 0) )
+		{
+			DWORD err = GetLastError();
+			server_queue_->push(unique_ptr<msg::LogMessage>(new msg::LogMessage(Formatter()<<"Error In ReadFile: " << err)));
+			monitor_queue_->push(unique_ptr<msg::ThreadDie>(new msg::ThreadDie()));
+			cont = false;
+			continue;
+		}
 
-		string in_msg;
-		cin >> in_msg;
-
-		//string msg = Formatter() << "Recieved " << bytes << " bytes: '" << string(buf,bytes) << "'";
-		//server_queue_->push(unique_ptr<msg::LogMessage>(new msg::LogMessage(msg)));
-
-		string msg = Formatter() << "Recieved " << in_msg.length() << " bytes: '" << in_msg << "'";
+		string cmd(buf,bytes);
+		string msg = Formatter() << "Received " << cmd.length() << " bytes: '" << cmd << "'";
 		server_queue_->push(unique_ptr<msg::LogMessage>(new msg::LogMessage(msg)));
+		monitor_queue_->push(unique_ptr<msg::InternalCommand>(new msg::InternalCommand(cmd)));
+
+		//string in_msg;
+		//cin >> in_msg;
+
+		//string msg = Formatter() << "Recieved " << in_msg.length() << " bytes: '" << in_msg << "'";
+		//server_queue_->push(unique_ptr<msg::LogMessage>(new msg::LogMessage(msg)));
 
 	}
 }

@@ -38,6 +38,16 @@ namespace msg
 		std::string msg_;
 	};
 
+	class InternalCommand : public BasicMessage
+	{
+	public:
+		void Handle(MessageHandler&);
+		InternalCommand(const std::string& msg) : msg_(msg) {};
+		virtual ~InternalCommand() {};
+	
+		std::string msg_;
+	};
+
 	class HeartBeat : public BasicMessage
 	{
 	public:
@@ -164,6 +174,7 @@ namespace msg
 		virtual void HandleSetPauseState(const SetPauseState&) {};
 		virtual void HandlePaused(const Paused&) {};
 		virtual void HandleResumed(const Resumed&) {};
+		virtual void HandleInternalCommand(const InternalCommand&) {};
 	};
 
 	class non_signaling_policy
