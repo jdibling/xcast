@@ -23,10 +23,17 @@ using namespace std;
 #include <core/core.h>
 using dibcore::util::Formatter;
 
+/***  VERSION HISTORY	***
+
+	Minor/Build		Comments
+
+	3.4				Finished piing support for control from Java
+
+*****************************/
 extern unsigned 
 	ver_major = 0,
-	ver_minor = 2,
-	ver_build = 3;
+	ver_minor = 3,
+	ver_build = 4;
 
 string as_bytes(__int64 bytes, bool as_bits = false, std::streamsize width = 3)
 {
