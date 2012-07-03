@@ -34,9 +34,6 @@ private:
 
 	enum State { run_state, die_state } state_;
 
-	static void WINAPI CompletedPipeReadRoutine(DWORD err, DWORD bytes, OVERLAPPED* ovr);
-
-
 	typedef std::shared_ptr<msg::win32::SignalingMsgQueue>	OOBQueue;
 	
 	std::shared_ptr<msg::MsgQueue>					server_queue_;

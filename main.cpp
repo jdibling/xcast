@@ -27,7 +27,7 @@ using dibcore::util::Formatter;
 
 	Minor/Build		Comments
 
-	3.4				Finished piing support for control from Java
+	3.4				Finished piping support for control from Java
 
 *****************************/
 extern unsigned 
@@ -147,7 +147,7 @@ void App::HandleThreadDead(const msg::ThreadDead& dead)
 	if( grp_threads_.threads_.empty() )
 	{
 		state_ = stop_state;
-		cout << "Application shutting down..." << endl;
+//		cout << "Application shutting down..." << endl;
 	}
 }
 
@@ -208,14 +208,12 @@ void App::run()
 		in_msg->Handle(*this);
 	}
 
-	cout << "Terminating Interface..." << endl;
+//	cout << "Terminating Interface..." << endl;
 	ifc_thread_.ctx_->oob_queue_->push(unique_ptr<msg::BasicMessage>(new msg::ThreadDie));
 	ifc_thread_.join();
 
 	cout << "DONE" << endl;
 }
-
-
 
 int main(int ac, char* av[])
 {

@@ -281,7 +281,6 @@ void GroupProcessor::operator()()
 {
 	try
 	{
-
 		Init();
 
 		while( state_ != die_state )
