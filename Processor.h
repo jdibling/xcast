@@ -80,12 +80,12 @@ private:
 	class Conn
 	{
 	public:
-		Conn(const std::string& group, unsigned short port);
+		Conn(const std::string& group, unsigned short port, unsigned ttl);
 
 		boost::asio::ip::udp::endpoint		group_;
 		boost::asio::io_service				io_svc_;
 		boost::asio::ip::udp::socket		sock_;
-
+		
 	private:
 		Conn();
 		Conn(const Conn& rhs);
@@ -114,7 +114,7 @@ private:
 	class Channel
 	{
 	public:
-		Channel(const std::string& name, const std::string& cap_file, const std::string& group, unsigned short port);
+		Channel(const std::string& name, const std::string& cap_file, const std::string& group, unsigned short port, unsigned ttl);
 
 		Conn		conn_;
 		Source		src_;

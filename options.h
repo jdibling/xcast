@@ -16,7 +16,7 @@ namespace opts
 		std::string name_;
 		std::string file_;
 		std::string group_;
-		unsigned port_;
+		std::string port_;
 	};
 	typedef std::vector<ChannelDesc> ChannelDescs;
 	typedef std::vector<xcast::PacketTime> PacketTimes;
@@ -25,6 +25,8 @@ namespace opts
 	{
 		ChannelDescs	channels_;
 		PacketTimes		pauses_;
+		unsigned		ttl_;
+		Options() : ttl_(0) {};
 	};
 
 	Options parse_command_line(int ac, char* av[]);

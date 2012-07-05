@@ -162,7 +162,10 @@ void App::HandleRequestProgress(const msg::RequestProgress& prog)
 
 void App::HandleGroupProgressReport(const msg::GroupProgress& prog) 
 {
-	int64_t speed = prog.bytes_sent_ / (int64_t)(ceil((double)prog.ttl_elapsed_.count() / 1000.0));
+	int64_t speed = 0;
+	if( prog.ttl_elapsed_.count() > 0 )
+		speed = prog.bytes_sent_ / (int64_t)(ceil((double)prog.ttl_elapsed_.count() / 1000.0));
+	
 	cout << "***\t" 
 		<< prog.group_ << "\t" 
 		<< as_bytes(prog.bytes_sent_,true) << " Sent (%" << setw(3) << (int)floor((float(prog.cur_src_byte_)/float(prog.max_src_byte_))*100.0f) << ")" << "\t" 

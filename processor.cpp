@@ -12,7 +12,7 @@ using namespace std;
 using dibcore::util::Formatter;
 
 #include <boost/chrono.hpp>
-
+#include <boost/lexical_cast.hpp>
 
 
 
@@ -41,13 +41,13 @@ void GroupProcessor::ProcessOOBQueue()
 namespace ip = boost::asio::ip;
 using ip::udp;
 
-GroupProcessor::Conn::Conn(const std::string& group, unsigned short port)
+GroupProcessor::Conn::Conn(const std::string& group, unsigned short port, unsigned ttl)
 :	group_(ip::address::from_string(group), port),
 	io_svc_(),
 	sock_(io_svc_, group_.protocol())
 {
 	using namespace ip::multicast;
-	sock_.set_option(hops(0));
+	sock_.set_option(hops(ttl));
 	sock_.set_option(outbound_interface(ip::address_v4::from_string("127.0.0.1")));
 }
 
@@ -103,9 +103,9 @@ unsigned GroupProcessor::Source::ReadNext()
 	return rc;
 }
 
-GroupProcessor::Channel::Channel(const std::string& name, const std::string& cap_file, const std::string& group, unsigned short port)
+GroupProcessor::Channel::Channel(const std::string& name, const std::string& cap_file, const std::string& group, unsigned short port, unsigned ttl)
 :	name_(name),
-	conn_(group, port),
+	conn_(group, port, ttl),
 	src_(cap_file)
 {
 }
@@ -114,7 +114,7 @@ void GroupProcessor::Init()
 {
 	for( opts::ChannelDescs::const_iterator desc = opts_.channels_.begin(); desc != opts_.channels_.end(); ++desc )
 	{
-		ChannelPtr ch(new Channel(desc->name_,desc->file_,desc->group_, desc->port_));
+		ChannelPtr ch(new Channel(desc->name_,desc->file_,desc->group_, boost::lexical_cast<unsigned short>(desc->port_), opts_.ttl_));
 		channels_[desc->name_] = std::move(ch);
 	}
 }
