@@ -218,7 +218,7 @@ Options opts::parse_command_line(int ac, char* av[])
 				desc.name_ = trim_copy(toks[0]);
 				desc.file_ = trim_copy(toks[1]);
 				desc.group_ = trim_copy(toks[2]);
-				desc.port_ = lexical_cast<unsigned>(trim_copy(toks[3]));
+				desc.port_ = trim_copy(toks[3]);
 				ret.channels_.push_back(desc);
 			}
 			else if( toks.size() == 3 )
