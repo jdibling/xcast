@@ -35,14 +35,14 @@ extern unsigned
 	ver_minor = 3,
 	ver_build = 4;
 
-string as_bytes(__int64 bytes, bool as_bits = false, std::streamsize width = 3)
+string as_bytes(__int64 bytes, bool as_bits = false, std::streamsize width = 4)
 {
 	char b = as_bits ? 'b' : 'B';
 	if( as_bits )
 		bytes*=8;
 
 	if( bytes < 1024 )
-		return dibcore::util::Formatter() << setw(width) << bytes << " " << b;
+		return dibcore::util::Formatter() << setw(width) << bytes << "  " << b;
 	bytes /= 1024;
 	if( bytes < 1024 )
 		return Formatter() << setw(width) << bytes << " K" << b;
@@ -113,6 +113,8 @@ void App::HandleHeartBeat(const msg::HeartBeat&)
 {
 	for( GroupThreads::ThreadVec::const_iterator thread = grp_threads_.threads_.begin(); thread != grp_threads_.threads_.end(); ++thread )
 	{
+		if( opts_.verb_prog_ )
+			thread->ctx_->oob_queue_->push(unique_ptr<msg::BasicMessage>(new msg::RequestProgress(msg::RequestProgress::indiv_progress)));
 		thread->ctx_->oob_queue_->push(unique_ptr<msg::BasicMessage>(new msg::RequestProgress(msg::RequestProgress::total_progress)));
 	}
 
@@ -166,19 +168,21 @@ void App::HandleGroupProgressReport(const msg::GroupProgress& prog)
 	if( prog.ttl_elapsed_.count() > 0 )
 		speed = prog.bytes_sent_ / (int64_t)(ceil((double)prog.ttl_elapsed_.count() / 1000.0));
 	
-	cout << "***\t" 
-		<< prog.group_ << "\t" 
-		<< as_bytes(prog.bytes_sent_,true) << " Sent (%" << setw(3) << (int)floor((float(prog.cur_src_byte_)/float(prog.max_src_byte_))*100.0f) << ")" << "\t" 
-		<< as_bytes(speed*8,true) << "/sec\t" 
-		<< "Next: " << prog.next_packet_ << "\t"
+	string chid = Formatter() << "TOTAL-" << prog.group_;
+	cout 
+		<< setw(21) << left << chid << setw(0) << " " 
+		<< as_bytes(prog.bytes_sent_,true) << " " << setw(3) << right << (int)floor((float(prog.cur_src_byte_)/float(prog.max_src_byte_))*100.0f) << "%" << "\t" 
+		<< as_bytes(speed*8,true) << "/sec" 
+		<< " Next: " << prog.next_packet_ 
 		<< endl;
 }
 
 void App::HandleChannelProgressReport(const msg::ChannelProgress& prog) 
 {
-	cout << prog.group_ << ":" << setw(21) << prog.channel_ << "\t " 
-		<< as_bytes(prog.cur_src_byte_,true) << " (%" << setw(3) << (int)floor((float(prog.cur_src_byte_)/float(prog.max_src_byte_))*100.0f) << ")" 
-		<< "\tNext: " << prog.packet_time_ 
+	string chid = Formatter() << prog.group_ << "/" << prog.channel_;
+	cout << setw(21) << left << chid << setw(0) << " " 
+		<< as_bytes(prog.cur_src_byte_,true) << " " << setw(3) << right << (int)floor((float(prog.cur_src_byte_)/float(prog.max_src_byte_))*100.0f) << "%" 
+		<< " Next: " << prog.packet_time_ 
 		<< endl; 
 }
 

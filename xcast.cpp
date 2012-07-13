@@ -27,11 +27,14 @@ std::string xcast::PacketTime::format() const
 {
 	stringstream ss;
 
-	ss 
-		<< setw(4) << setfill('0') << y_ << "/"
-		<< setw(2) << setfill('0') << m_ << "/" 
-		<< setw(2) << setfill('0') << d_ << " " 
-		<< setw(2) << setfill('0') << hh_ << ":" 
+	if( y_ > 0 )
+		ss 	<< setw(4) << setfill('0') << (y_ == -1 ? 0 : y_) << "/";
+	if( m_ > 0 )
+		ss  << setw(2) << setfill('0') << m_ << "/" ;
+	if( d_ > 0 )
+		ss << setw(2) << setfill('0') << d_ << " " ;
+		
+	ss	<< setw(2) << setfill('0') << hh_ << ":" 
 		<< setw(2) << setfill('0') << mm_ << ":" 
 		<< setw(2) << setfill('0') << ss_ << "." 
 		<< setw(3) << setfill('0') << ms_;

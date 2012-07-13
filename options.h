@@ -26,7 +26,9 @@ namespace opts
 		ChannelDescs	channels_;
 		PacketTimes		pauses_;
 		unsigned		ttl_;
-		Options() : ttl_(0) {};
+		unsigned		delay_;
+		bool			verb_prog_;
+		Options() : ttl_(0), delay_(0), verb_prog_(false) {};
 	};
 
 	Options parse_command_line(int ac, char* av[]);

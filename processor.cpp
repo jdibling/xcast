@@ -292,7 +292,8 @@ void GroupProcessor::operator()()
 			if( state_ == play_state )
 			{
 				ProcessPacket();
-				//boost::this_thread::sleep(boost::posix_time::milliseconds(5));
+				if( opts_.delay_ > 0 )
+					boost::this_thread::sleep(boost::posix_time::milliseconds(opts_.delay_));
 			}
 
 			if( channels_.empty() )

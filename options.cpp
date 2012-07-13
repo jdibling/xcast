@@ -131,7 +131,16 @@ namespace
 	{
 		static const OptName
 			/***	GENERAL MULTICAST OPTIONS	***/
-			TTL			= OptName("ttl","MultiCast Time To Live")
+			TTL			= OptName("ttl","MultiCast Time To Live"),
+			Delay		= OptName("packet-delay","Delay in milliseconds between packets")
+			;
+	};
+
+	namespace Interface
+	{
+		static const OptName
+			/***	INTERFACE/FORMATTING OPTIONS	***/
+			VerbProg	= OptName("display-channel-progress","Display Verbose Progress Messages")
 			;
 	};
 
@@ -139,17 +148,6 @@ namespace
 
 Options opts::parse_command_line(int ac, char* av[])
 {
-	//string
-	//	channel_name,
-	//	cap_file,
-	//	group,
-	//	def_file,
-	//	pause_file;
-	//unsigned 
-	//	port = 0,
-	//	ttl = 0;
-	//
-	
 	Options ret;
 	bool abort = false;
 
@@ -345,7 +343,8 @@ Options opts::parse_command_line(int ac, char* av[])
 	/***	PROCESS MULTICAST OPTIONS	***/
 	options_description mcast_o("MultiCast Options");
 	mcast_o.add_options()
-		(MCast::TTL.fmt_,	value<unsigned>(&ret.ttl_),	MCast::TTL.desc_)
+		(MCast::TTL.fmt_,	value<unsigned>(&ret.ttl_),		MCast::TTL.desc_)
+		(MCast::Delay.fmt_,	value<unsigned>(&ret.delay_),	MCast::Delay.desc_)
 	;
 	help_options.add(mcast_o);
 	if( !abort && (mode==RunMode||mode==ShowMode) )
@@ -353,6 +352,19 @@ Options opts::parse_command_line(int ac, char* av[])
 		variables_map mcast_vm;
 		store(command_line_parser(ac,av).options(mcast_o).allow_unregistered().run(), mcast_vm);
 		notify(mcast_vm);
+	}
+
+	/***	PROCESS INTERFACE/FORMATTING OPTIONS	***/
+	options_description ifc_o("Interface/Formatting Options");
+	ifc_o.add_options()
+		(Interface::VerbProg.fmt_,	bool_switch(&ret.verb_prog_)->zero_tokens(),	Interface::VerbProg.desc_)
+	;
+	help_options.add(ifc_o);
+	if( !abort && (mode==RunMode||mode==ShowMode) )
+	{
+		variables_map ifc_vm;
+		store(command_line_parser(ac,av).options(ifc_o).allow_unregistered().run(), ifc_vm);
+		notify(ifc_vm);
 	}
 
 	/***	HANDLE ERRORS, SHOW HELP SCREEN ***/

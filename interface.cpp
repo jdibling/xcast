@@ -125,10 +125,6 @@ void InterfaceProcessor::Init()
 {
 	using namespace dibcore;
 
-//	DWORD cNumRead, fdwMode, i; 
-//	INPUT_RECORD irInBuf[128]; 
-//	int counter=0;
- 
 	// Get the standard input handle. 
 	if( (stdin_h_ = GetStdHandle(STD_INPUT_HANDLE)) == INVALID_HANDLE_VALUE ) 
 		throwx(ex::generic_error("Can't Get StdIn Handle"));
@@ -213,23 +209,10 @@ void PipeProcessor::operator()()
 {
 	using dibcore::util::Formatter;
 
-//	server_queue_->push(unique_ptr<msg::LogMessage>(new msg::LogMessage("S:PipeProcessor Running")));
-//	monitor_queue_->push(unique_ptr<msg::LogMessage>(new msg::LogMessage("M:PipeProcessor Running")));
-
 	DWORD f=0, o_buf=0, i_buf=0, inst=0;
-	//if( GetNamedPipeInfo(pipe_h_, &f, &o_buf, &i_buf, &inst) )
-	//{
-	//	cout << "Named Pipe: f=" << showbase << hex << f << ", o_buf=" << o_buf << ", i_buf=" << i_buf << ", inst=" << inst << endl;
-	//}
-	//else
-	//{
-	//	cout << "Anonymous Pipe" << endl;
-	//}
-
 	state_ = run_state;
 	while( state_ == run_state )
 	{
-//		server_queue_->push(unique_ptr<msg::LogMessage>(new msg::LogMessage("S:PipeProcessor LOOP")));
 		char buf[256] = {};
 		DWORD bytes = 0;
 		if( !ReadFile(pipe_h_, buf, sizeof(buf)/sizeof(buf[0]), &bytes, 0) )
@@ -250,8 +233,6 @@ void PipeProcessor::operator()()
 		}
 
 		string cmd(buf,bytes);
-//		string msg = Formatter() << "Received " << cmd.length() << " bytes: '" << cmd << "'";
-//		server_queue_->push(unique_ptr<msg::LogMessage>(new msg::LogMessage(msg)));
 		monitor_queue_->push(unique_ptr<msg::InternalCommand>(new msg::InternalCommand(cmd)));
 	}
 }
@@ -302,6 +283,11 @@ void InterfaceProcessor::operator()()
 				{
 				case WAIT_OBJECT_0 :		// OOB Message Event
 					ProcessOOBEvent();
+					if( state_ == die_state )
+					{
+						server_queue_->push(unique_ptr<msg::LogMessage>(new msg::LogMessage("Staying in RunState")));
+						state_ = run_state;
+					}
 					break;
 
 				case WAIT_TIMEOUT :			// HB timeout
@@ -310,7 +296,7 @@ void InterfaceProcessor::operator()()
 				}		
 			}
 
-			CancelSynchronousIo(pipe_thread_h);
+			//CancelSynchronousIo(pipe_thread_h);
 
 			pipe_thread.join();
 		}
