@@ -12,6 +12,11 @@ void LogMessage::Handle(MessageHandler& handler)
 	handler.HandleLogMessage(*this);
 }
 
+void DebugMessage::Handle(MessageHandler& handler)
+{
+	handler.HandleDebugMessage(*this);
+}
+
 void InternalCommand::Handle(MessageHandler& handler)
 {
 	handler.HandleInternalCommand(*this);

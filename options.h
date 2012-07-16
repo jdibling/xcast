@@ -28,7 +28,8 @@ namespace opts
 		unsigned		ttl_;
 		unsigned		delay_;
 		bool			verb_prog_;
-		Options() : ttl_(0), delay_(0), verb_prog_(false) {};
+		bool			verbose_;
+		Options() : ttl_(0), delay_(0), verb_prog_(false), verbose_(false) {};
 	};
 
 	Options parse_command_line(int ac, char* av[]);

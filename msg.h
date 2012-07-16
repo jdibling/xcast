@@ -38,7 +38,13 @@ namespace msg
 		std::string msg_;
 	};
 
-	typedef LogMessage DebugMessage;
+	class DebugMessage : public LogMessage
+	{
+	public:
+		DebugMessage(const std::string& msg) : LogMessage(msg) {};
+		void Handle(MessageHandler&);
+	};
+
 	typedef LogMessage ErrorMessage;
 
 	class InternalCommand : public BasicMessage
@@ -168,6 +174,7 @@ namespace msg
 	public:
 		virtual void HandleHeartBeat(const HeartBeat&) {};
 		virtual void HandleLogMessage(const LogMessage&) {};
+		virtual void HandleDebugMessage(const DebugMessage&) {};
 		virtual void HandleThreadDie(const ThreadDie&) {};
 		virtual void HandleThreadDead(const ThreadDead&) {};
 		virtual void HandleGroupProgressReport(const GroupProgress&) {};

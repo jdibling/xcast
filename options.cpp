@@ -140,7 +140,8 @@ namespace
 	{
 		static const OptName
 			/***	INTERFACE/FORMATTING OPTIONS	***/
-			VerbProg	= OptName("display-channel-progress","Display Verbose Progress Messages")
+			VerbProg	= OptName("display-channel-progress","Display Verbose Progress Messages"),
+			Verbose		= OptName("verbose","Display Verbose Messages")
 			;
 	};
 
@@ -358,6 +359,7 @@ Options opts::parse_command_line(int ac, char* av[])
 	options_description ifc_o("Interface/Formatting Options");
 	ifc_o.add_options()
 		(Interface::VerbProg.fmt_,	bool_switch(&ret.verb_prog_)->zero_tokens(),	Interface::VerbProg.desc_)
+		(Interface::Verbose.fmt_,	bool_switch(&ret.verbose_)->zero_tokens(),		Interface::Verbose.desc_)
 	;
 	help_options.add(ifc_o);
 	if( !abort && (mode==RunMode||mode==ShowMode) )

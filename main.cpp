@@ -67,6 +67,7 @@ public:
 	void run();
 
 	void HandleLogMessage(const msg::LogMessage& log);
+	void HandleDebugMessage(const msg::DebugMessage& log);
 	void HandleThreadDie(const msg::ThreadDie&);
 	void HandleThreadDead(const msg::ThreadDead&);
 	void HandleRequestProgress(const msg::RequestProgress&);
@@ -81,7 +82,8 @@ public:
 private:
 	void DebugMessage(const string& msg) const
 	{
-		clog << "XCAST App " << msg << endl;
+		if( opts_.verbose_ )
+			clog << "XCAST App " << msg << endl;
 	}
 	void LogMessage(const string& msg) const
 	{
@@ -112,6 +114,12 @@ void App::TermInterface()
 void App::HandleLogMessage(const msg::LogMessage& log)
 {
 	LogMessage(log.msg_);
+}
+
+void App::HandleDebugMessage(const msg::DebugMessage& msg)
+{
+	if( opts_.verbose_ )
+		LogMessage(msg.msg_);
 }
 
 void App::HandleAutoPaused(const msg::AutoPaused& ap) 
