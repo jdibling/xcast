@@ -5,6 +5,7 @@
 using std::shared_ptr;
 #include <core/core.h>
 using namespace dibcore;
+using dibcore::util::Formatter;
 
 #include <iostream>
 #include <memory>
@@ -27,6 +28,7 @@ InterfaceProcessor::InterfaceProcessor(InterfaceProcessor&& rhs)
 
 void InterfaceProcessor::ProcessOOBEvent()
 {
+	DebugMessage("ProcessOOB");
 	///*** Get any OOB Messages First ***///
 	while( state_ != die_state && !oob_queue_->empty() )
 	{
@@ -83,19 +85,23 @@ void InterfaceProcessor::ProcessInterfaceEvent_KeyPress(const INPUT_RECORD& ir)
 
 void InterfaceProcessor::OnCommand(char cmd)
 {
+	DebugMessage(Formatter() << "InterfaceProcessor Command '" << cmd << "'");
 	switch( cmd )
 	{
 	case 'Q' :	// quit command
 		server_queue_->push(unique_ptr<msg::ThreadDie>(new msg::ThreadDie));
+		DebugMessage(Formatter() << "InterfaceProcessor Command '" << cmd << "' Handled");
 		break;
 
 	case 'S' :	// stats command
 		server_queue_->push(unique_ptr<msg::RequestProgress>(new msg::RequestProgress(msg::RequestProgress::indiv_progress)));
 		server_queue_->push(unique_ptr<msg::RequestProgress>(new msg::RequestProgress(msg::RequestProgress::total_progress)));
+		DebugMessage(Formatter() << "InterfaceProcessor Command '" << cmd << "' Handled");
 		break;
 
 	case 'P' :	// Pause
 		server_queue_->push(unique_ptr<msg::TogglePause>(new msg::TogglePause));
+		DebugMessage(Formatter() << "InterfaceProcessor Command '" << cmd << "' Handled");
 		break;
 
 	default:
@@ -105,6 +111,8 @@ void InterfaceProcessor::OnCommand(char cmd)
 
 void InterfaceProcessor::HandleInternalCommand(const msg::InternalCommand& cmd)
 {
+	DebugMessage(Formatter() << "InterfaceProcessor HandleInternalCommand('" << cmd.msg_ << "')");
+
 	for_each(cmd.msg_.begin(), cmd.msg_.end(), [this](char c)
 	{
 		OnCommand(c);
@@ -113,17 +121,21 @@ void InterfaceProcessor::HandleInternalCommand(const msg::InternalCommand& cmd)
 
 void InterfaceProcessor::ProcessHeartBeat()
 {
+	DebugMessage("InterfaceProcessor ProcessHeartBeat");
 	server_queue_->push(unique_ptr<msg::HeartBeat>(new msg::HeartBeat()));
 }
 
 void InterfaceProcessor::HandleThreadDie(const msg::ThreadDie&)
 {
+	DebugMessage("InterfaceProcessor HandleThreadDie");
 	state_ = die_state;
 }
 
 void InterfaceProcessor::Init()
 {
 	using namespace dibcore;
+
+	DebugMessage("InterfaceProcessor Init");
 
 	// Get the standard input handle. 
 	if( (stdin_h_ = GetStdHandle(STD_INPUT_HANDLE)) == INVALID_HANDLE_VALUE ) 
@@ -132,7 +144,7 @@ void InterfaceProcessor::Init()
 
 	if( file_type_ == FILE_TYPE_CHAR )
 	{
-		server_queue_->push(unique_ptr<msg::LogMessage>(new msg::LogMessage("Console Mode")));
+		DebugMessage("InterfaceProcessor Console Mode");
 
 		// Save the current input mode, to be restored on exit. 
 		if( !GetConsoleMode(stdin_h_, &old_con_mode_) ) 
@@ -144,24 +156,30 @@ void InterfaceProcessor::Init()
 	}
 	else if( file_type_ == FILE_TYPE_PIPE )
 	{
-		//server_queue_->push(unique_ptr<msg::LogMessage>(new msg::LogMessage("Pipe Mode")));
+		DebugMessage("InterfaceProcessor Pipe Mode");
 	}
 }
 
+string InterfaceProcessor::ID() const
+{
+	return Formatter() << "InterfaceProcessor << " << this;
+}
 
 void InterfaceProcessor::Teardown()
 {
 	if( stdin_h_ != INVALID_HANDLE_VALUE && file_type_ == FILE_TYPE_CHAR )
 		SetConsoleMode(stdin_h_, old_con_mode_);
-	server_queue_->push(unique_ptr<msg::LogMessage>(new msg::LogMessage("Interface Teardown")));
+	DebugMessage("InterfaceProcessor Teardown");
+	server_queue_->push(unique_ptr<msg::ThreadDead>(new msg::ThreadDead(ID())));
 }
 
 struct PipeInst : public OVERLAPPED
 {
-	HANDLE				pipe_;
-	InterfaceProcessor*	proc_;
-	static const size_t buf_sz_ = 4096;
-	char				buf_[buf_sz_];
+	HANDLE					pipe_;
+	InterfaceProcessor*		ifc_proc_;
+	class PipeProcessor*	pipe_proc_;
+	static const size_t		buf_sz_ = 4096;
+	char					buf_[buf_sz_];
 
 };
 
@@ -183,36 +201,40 @@ public:
 	{
 	}
 
+	std::string ID() const
+	{
+		return Formatter() << "PipeProcessor " << this;
+	}
+
 	virtual ~PipeProcessor() {};
 	void operator()() ;
+
 private:
-	static void CompletedPipeReadRoutine(DWORD err, DWORD bytes, OVERLAPPED* ovr);
+	void DebugMessage(const string& msg) const
+	{
+		server_queue_->push(unique_ptr<msg::DebugMessage>(new msg::DebugMessage(msg)));
+	}
+
+	//static void CompletedPipeReadRoutine(DWORD err, DWORD bytes, OVERLAPPED* ovr);
 
 	enum ThreadState { run_state, die_state}		state_;
+	
 	HANDLE pipe_h_;
 	std::shared_ptr<msg::MsgQueue>					server_queue_;
 	InterfaceProcessor::OOBQueue					monitor_queue_;	
 };
 
-void PipeProcessor::CompletedPipeReadRoutine(DWORD err, DWORD bytes, OVERLAPPED* ovr)
-{
-	PipeInst* pi = static_cast<PipeInst*>(ovr);
-	string in(pi->buf_, bytes);
-
-	for_each( in.begin(), in.end(), [pi](char c)
-	{
-		pi->proc_->OnCommand(c);
-	});
-}
-
 void PipeProcessor::operator()()
 {
+	DebugMessage("PipeProcessor Start");
+
 	using dibcore::util::Formatter;
 
 	DWORD f=0, o_buf=0, i_buf=0, inst=0;
 	state_ = run_state;
 	while( state_ == run_state )
 	{
+		DebugMessage("PipeProcessor Loop");
 		char buf[256] = {};
 		DWORD bytes = 0;
 		if( !ReadFile(pipe_h_, buf, sizeof(buf)/sizeof(buf[0]), &bytes, 0) )
@@ -220,7 +242,9 @@ void PipeProcessor::operator()()
 			DWORD err = GetLastError();
 			if( err == ERROR_OPERATION_ABORTED )
 			{
-				server_queue_->push(unique_ptr<msg::ThreadDead>(new msg::ThreadDead()));
+				DebugMessage(dibcore::util::formatwinerr("ReadFile",err));
+				server_queue_->push(unique_ptr<msg::ThreadDead>(new msg::ThreadDead(ID())));
+				DebugMessage(Formatter()<<ID()<< " Thread Aborted");
 				state_ = die_state;
 				continue;
 			}
@@ -233,8 +257,11 @@ void PipeProcessor::operator()()
 		}
 
 		string cmd(buf,bytes);
+		DebugMessage(Formatter()<<"Recv " << bytes << " bytes: '" << cmd << "'");
 		monitor_queue_->push(unique_ptr<msg::InternalCommand>(new msg::InternalCommand(cmd)));
 	}
+
+	DebugMessage("PipeProcessor Exit");
 }
 
 
@@ -273,32 +300,37 @@ void InterfaceProcessor::operator()()
 		}
 		else if( file_type_ == FILE_TYPE_PIPE )
 		{
+			DebugMessage("InterfaceProcessor Pipe Mode Start");
 			Thread<PipeProcessor> pipe_thread(unique_ptr<PipeProcessor>(new PipeProcessor(stdin_h_, this->server_queue_, this->oob_queue_)));
 			HANDLE pipe_thread_h = pipe_thread.thread_->native_handle();
 			while( state_ != die_state )
 			{
+				DebugMessage("InterfaceProcessor Loop");
+
 				static const DWORD hb_timeout = 1000;
 				DWORD rc = WaitForSingleObject(oob_queue_->get_native_handle(), hb_timeout);
 				switch( rc )
 				{
 				case WAIT_OBJECT_0 :		// OOB Message Event
+					DebugMessage("InterfaceProcessor OOB");
 					ProcessOOBEvent();
-					if( state_ == die_state )
-					{
-						server_queue_->push(unique_ptr<msg::LogMessage>(new msg::LogMessage("Staying in RunState")));
-						state_ = run_state;
-					}
 					break;
 
 				case WAIT_TIMEOUT :			// HB timeout
+					DebugMessage("InterfaceProcessor HB");
 					ProcessHeartBeat();
 					break;
+
+				default :
+					DebugMessage(Formatter() << "InterfaceProcessor Unexpected Wait Result: " << rc);
 				}		
 			}
 
+			DebugMessage("InterfaceProcessor Loop End");
 			//CancelSynchronousIo(pipe_thread_h);
 
-			pipe_thread.join();
+			//pipe_thread.join();
+			DebugMessage("InterfaceProcessor Exit");
 		}
 	}
 	catch(std::exception& ex)
@@ -308,7 +340,5 @@ void InterfaceProcessor::operator()()
 		Teardown();
 		throw;
 	}
-
 	Teardown();
-
 }

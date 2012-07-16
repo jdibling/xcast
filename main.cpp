@@ -79,6 +79,17 @@ public:
 	void HandleResumed(const msg::Resumed&);
 
 private:
+	void DebugMessage(const string& msg) const
+	{
+		clog << "XCAST App " << msg << endl;
+	}
+	void LogMessage(const string& msg) const
+	{
+		cout << msg << endl;
+	}
+
+	void TermInterface();
+
 	enum State { run_state, stop_state }		state_;
 	opts::Options								opts_;
 	shared_ptr<msg::MsgQueue>					server_queue_;
@@ -89,28 +100,40 @@ private:
 	GroupThreads								grp_threads_;
 };
 
+void App::TermInterface()
+{
+	DebugMessage("TermInterface Enter");
+
+	ifc_thread_.ctx_->oob_queue_->push(unique_ptr<msg::ThreadDie>(new msg::ThreadDie()));
+
+	DebugMessage("TermInterface Leave");
+}
+
 void App::HandleLogMessage(const msg::LogMessage& log)
 {
-	cout << "MESSAGE: '" << log.msg_ << "'" << endl;
+	LogMessage(log.msg_);
 }
 
 void App::HandleAutoPaused(const msg::AutoPaused& ap) 
 {
-	cout << "AUTO-PAUSED Group '" << ap.grp_ << "'. Next Packet On Channel '" << ap.chan_ << "' @ '" << ap.pt_.format() << "'." << endl;
+	LogMessage(Formatter()
+		<< "AUTO-PAUSED Group '" << ap.grp_ << "'. "
+		<< "Next Packet On Channel '" << ap.chan_ << "' @ '" << ap.pt_.format() << "'.");
 }
 
 void App::HandlePaused(const msg::Paused& p) 
 {
-	cout << "PAUSED Group '" << p.grp_ << "'." << endl;
+	LogMessage(Formatter()<<"PAUSED Group '" << p.grp_ << "'.");
 }
 
 void App::HandleResumed(const msg::Resumed& r) 
 {
-	cout << "RESUMED Group '" << r.grp_ << "'." << endl;
+	LogMessage(Formatter() << "RESUMED Group '" << r.grp_ << "'.");
 }
 
 void App::HandleHeartBeat(const msg::HeartBeat&) 
 {
+	DebugMessage("HB");
 	for( GroupThreads::ThreadVec::const_iterator thread = grp_threads_.threads_.begin(); thread != grp_threads_.threads_.end(); ++thread )
 	{
 		if( opts_.verb_prog_ )
@@ -121,7 +144,7 @@ void App::HandleHeartBeat(const msg::HeartBeat&)
 }
 void App::HandleThreadDie(const msg::ThreadDie&) 
 {
-	cout << "QUIT" << endl;
+	DebugMessage("QUIT");
 
 	// tell every proc thread to shut down
 	for( GroupThreads::ThreadVec::const_iterator thread = grp_threads_.threads_.begin(); thread != grp_threads_.threads_.end(); ++thread )
@@ -131,7 +154,7 @@ void App::HandleThreadDie(const msg::ThreadDie&)
 
 	grp_threads_.join_all();
 
-	state_ = stop_state;
+	DebugMessage("All Processors Terminated");
 }
 
 void App::HandleThreadDead(const msg::ThreadDead& dead) 
@@ -142,14 +165,23 @@ void App::HandleThreadDead(const msg::ThreadDead& dead)
 	{
 		return that.ThreadID() == dead.id_;
 	});
-
-	thread->join();
-	cout << "Group '" << dead.id_ << "' EOF." << endl;
-	grp_threads_.threads_.erase(thread);
-	if( grp_threads_.threads_.empty() )
+	if( thread != grp_threads_.threads_.end() )
 	{
+		// A group processor died
+		thread->join();
+		DebugMessage(Formatter() << "Group '" << dead.id_ << "' EOF.");
+		grp_threads_.threads_.erase(thread);
+		if( grp_threads_.threads_.empty() )
+		{
+			DebugMessage("All Groups EOF");
+			TermInterface();
+		}
+	}
+	else
+	{
+		// The interface processor died
+		DebugMessage("Interface Processor Exited. Shutting down");
 		state_ = stop_state;
-//		cout << "Application shutting down..." << endl;
 	}
 }
 
@@ -198,25 +230,27 @@ void App::HandleTogglePause(const msg::TogglePause&)
 
 void App::run()
 {
+	DebugMessage("App Start");
+
 	cout << "xcast v. " << ver_major << "." << ver_minor << " (Build " << ver_build << ")" << endl;
 	///*** Start Processor Threads (1 per channel-group) ***///
 	for( int i = 0; i < 1; ++i )
 	{
 		grp_threads_.threads_.push_back(GroupThread(unique_ptr<GroupProcessor>(new GroupProcessor("Group", this->opts_, server_queue_, false))));
-		//GroupProcessor proc(server_queue_);
-		//proc_threads_.add_thread(new boost::thread(proc));
 	}	
 
+	DebugMessage("App Loop Enter");
 	///*** WAIT FOR WORK ***///
 	while( state_ == run_state )
 	{
+		DebugMessage("App Loop");
+
 		unique_ptr<msg::BasicMessage> in_msg;
 		server_queue_->wait_and_pop(in_msg);
 		in_msg->Handle(*this);
 	}
+	DebugMessage("App Loop Exit");
 
-//	cout << "Terminating Interface..." << endl;
-	ifc_thread_.ctx_->oob_queue_->push(unique_ptr<msg::BasicMessage>(new msg::ThreadDie));
 	ifc_thread_.join();
 
 	cout << "DONE" << endl;

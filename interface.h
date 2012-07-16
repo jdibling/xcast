@@ -18,6 +18,10 @@ public:
 	void operator()() ;
 
 private:
+	inline void DebugMessage(const std::string& msg) const
+	{
+		server_queue_->push(std::unique_ptr<msg::DebugMessage>(new msg::DebugMessage(msg)));
+	}
 
 	void Init();
 	void Teardown();
@@ -31,6 +35,8 @@ private:
 
 	void HandleThreadDie(const msg::ThreadDie& die);
 	void HandleInternalCommand(const msg::InternalCommand& cmd);
+
+	std::string ID() const;
 
 	enum State { run_state, die_state } state_;
 

@@ -38,6 +38,9 @@ namespace msg
 		std::string msg_;
 	};
 
+	typedef LogMessage DebugMessage;
+	typedef LogMessage ErrorMessage;
+
 	class InternalCommand : public BasicMessage
 	{
 	public:
@@ -66,6 +69,7 @@ namespace msg
 	{
 	public:
 		void Handle(MessageHandler&);
+		ThreadDead(const std::string id) : id_(id) {}
 		~ThreadDead() {};
 		std::string id_;
 	};
