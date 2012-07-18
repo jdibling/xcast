@@ -30,10 +30,6 @@ using dibcore::util::Formatter;
 	3.4				Finished piping support for control from Java
 
 *****************************/
-extern unsigned 
-	ver_major = 0,
-	ver_minor = 3,
-	ver_build = 4;
 
 string as_bytes(__int64 bytes, bool as_bits = false, std::streamsize width = 4)
 {
@@ -240,7 +236,6 @@ void App::run()
 {
 	DebugMessage("App Start");
 
-	cout << "xcast v. " << ver_major << "." << ver_minor << " (Build " << ver_build << ")" << endl;
 	///*** Start Processor Threads (1 per channel-group) ***///
 	for( int i = 0; i < 1; ++i )
 	{
@@ -281,6 +276,11 @@ int main(int ac, char* av[])
 	{
 		cerr << ex.what() << endl;
 		return 43;
+	}
+	catch( const std::exception& ex )
+	{
+		cerr << "Unhandled Exception: '" << ex.what() << "'" << endl;
+		return 45;
 	}
 	catch(...)
 	{

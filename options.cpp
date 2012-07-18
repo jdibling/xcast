@@ -147,6 +147,16 @@ namespace
 
 };
 
+void store_to(options_description& opts, variables_map& vm, int ac, char* av[])
+{
+	store(command_line_parser(ac,av)
+		.options(opts)
+		.style(command_line_style::default_style 
+			| command_line_style::allow_slash_for_short)
+		.allow_unregistered()
+		.run(), vm);
+}
+
 Options opts::parse_command_line(int ac, char* av[])
 {
 	Options ret;
@@ -154,25 +164,27 @@ Options opts::parse_command_line(int ac, char* av[])
 
 	options_description help_options("Allowed options");
 
-	/***	PROCESS BASE OPTIONS	***/
-	options_description base_options("Base Options");
-	base_options.add_options()
-		(Base::Help.fmt_,		Base::Help.desc_)
-		(Base::Version.fmt_,	Base::Version.desc_)
-		(Base::Show.fmt_,		Base::Show.desc_)													
-		;
-	
-	help_options.add(base_options);
-
 	enum Mode 
 	{
 		RunMode,	
 		HelpMode,
+		VerMode,
 		ShowMode
 	};		// display help banners
 	int mode = (int)RunMode;
+
+	/***	PROCESS BASE OPTIONS	***/
+	options_description base_options("Base Options");
+	base_options.add_options()
+		(Base::Help.fmt_,		value<int>(&mode)->implicit_value((int)HelpMode),	Base::Help.desc_)
+		(Base::Version.fmt_,	value<int>(&mode)->implicit_value((int)VerMode),	Base::Version.desc_)
+		(Base::Show.fmt_,		value<int>(&mode)->implicit_value((int)ShowMode),	Base::Show.desc_)													
+		;
+	
+	help_options.add(base_options);
+
 	variables_map base_vm;
-	store(command_line_parser(ac,av).options(base_options).allow_unregistered().run(), base_vm);
+	store_to(base_options, base_vm, ac, av);
 	notify(base_vm);
 
 	/***	PROCESS CHANNEL DEFINITION FILE	***/
@@ -189,7 +201,8 @@ Options opts::parse_command_line(int ac, char* av[])
 		help_options.add(chf_o);
 
 		variables_map chf_vm;
-		store(command_line_parser(ac,av).options(chf_o).allow_unregistered().run(), chf_vm);
+		store_to(chf_o, chf_vm, ac, av);
+		//store(command_line_parser(ac,av).options(chf_o).allow_unregistered().run(), chf_vm);
 		notify(chf_vm);
 
 		// Grab the whole file as a single string
@@ -249,7 +262,8 @@ Options opts::parse_command_line(int ac, char* av[])
 	if( !abort && (mode==RunMode||mode==ShowMode) )
 	{
 		variables_map pf_vm;
-		store(command_line_parser(ac,av).options(pf_o).allow_unregistered().run(), pf_vm);
+		//store(command_line_parser(ac,av).options(pf_o).allow_unregistered().run(), pf_vm);
+		store_to(pf_o, pf_vm, ac, av);
 		notify(pf_vm);
 
 		// Grab the whole file in to a single string
@@ -327,7 +341,8 @@ Options opts::parse_command_line(int ac, char* av[])
 	if( !abort && (mode==RunMode||mode==ShowMode) )
 	{
 		variables_map chd_vm;
-		store(command_line_parser(ac,av).options(chd_o).allow_unregistered().positional(chd_p).run(), chd_vm);
+		//store(command_line_parser(ac,av).options(chd_o).allow_unregistered().positional(chd_p).run(), chd_vm);
+		store_to(chd_o, chd_vm, ac, av);
 		bool any_present = 
 			(!ch.file_.empty())		||
 			(!ch.group_.empty())	||
@@ -351,7 +366,8 @@ Options opts::parse_command_line(int ac, char* av[])
 	if( !abort && (mode==RunMode||mode==ShowMode) )
 	{
 		variables_map mcast_vm;
-		store(command_line_parser(ac,av).options(mcast_o).allow_unregistered().run(), mcast_vm);
+		//store(command_line_parser(ac,av).options(mcast_o).allow_unregistered().run(), mcast_vm);
+		store_to(mcast_o, mcast_vm, ac, av);
 		notify(mcast_vm);
 	}
 
@@ -365,17 +381,20 @@ Options opts::parse_command_line(int ac, char* av[])
 	if( !abort && (mode==RunMode||mode==ShowMode) )
 	{
 		variables_map ifc_vm;
-		store(command_line_parser(ac,av).options(ifc_o).allow_unregistered().run(), ifc_vm);
+		//store(command_line_parser(ac,av).options(ifc_o).allow_unregistered().run(), ifc_vm);
+		store_to(ifc_o, ifc_vm, ac, av);
 		notify(ifc_vm);
 	}
 
 	/***	HANDLE ERRORS, SHOW HELP SCREEN ***/
+	cerr << utils::ver_string() << endl;
+
 	if( abort )
 	{
 		mode = HelpMode;
 		cerr << "Command Syntax Error." << endl;
 	}
-
+		
 	if( mode == HelpMode )
 	{
 		cerr << help_options << endl;
