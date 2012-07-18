@@ -291,7 +291,7 @@ Options opts::parse_command_line(int ac, char* av[])
 				SS = 6,
 				MS = 7;
 							
-			std::regex rx("^(?:(\\d{4})\\/(\\d{2})\\/(\\d{2})\\s?)?(\\d{2}):(\\d{2}):?(\\d{2})?\\.?(\\d{2})?");
+			std::regex rx("^(?:(\\d{2,4})\\/(\\d{1,2})\\/(\\d{1,2})\\s?)?(\\d{1,2}):(\\d{1,2}):?(\\d{1,2})?\\.?(\\d{1,3})?");
 			std::cmatch rm;
 			if( std::regex_search(line.c_str(), rm, rx) )
 			{
