@@ -72,6 +72,8 @@ public:
 	void HandleTogglePause(const msg::TogglePause&);
 	void HandleHeartBeat(const msg::HeartBeat&);
 	void HandleAutoPaused(const msg::AutoPaused&);
+	void HandleRestart(const msg::Restart&);
+	void HandleRestarted(const msg::Restarted&);
 	void HandlePaused(const msg::Paused&);
 	void HandleResumed(const msg::Resumed&);
 
@@ -231,6 +233,19 @@ void App::HandleTogglePause(const msg::TogglePause&)
 	}
 }
 
+void App::HandleRestart(const msg::Restart&)
+{
+	// tell every proc thread to restart
+	for( GroupThreads::ThreadVec::const_iterator thread = grp_threads_.threads_.begin(); thread != grp_threads_.threads_.end(); ++thread )
+	{
+		thread->ctx_->oob_queue_->push(unique_ptr<msg::Restart>(new msg::Restart));
+	}
+}
+
+void App::HandleRestarted(const msg::Restarted& rst)
+{
+	LogMessage(Formatter() << "RESTARTED Group '" << rst.chan_ << "'.");
+}
 
 void App::run()
 {

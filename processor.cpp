@@ -103,6 +103,13 @@ unsigned GroupProcessor::Source::ReadNext()
 	return rc;
 }
 
+void GroupProcessor::Source::Restart()
+{
+	cap_.SeekFromBeginning(0);
+	cur_byte_ = 0;
+	ReadNext();
+}
+
 GroupProcessor::Channel::Channel(const std::string& name, const std::string& cap_file, const std::string& group, unsigned short port, unsigned ttl)
 :	name_(name),
 	conn_(group, port, ttl),
@@ -152,6 +159,31 @@ void GroupProcessor::HandleTogglePause(const msg::TogglePause&)
 
 	TogglePause();
 	server_queue_->push(unique_ptr<msg::BasicMessage>(state_ == pause_state ? static_cast<msg::BasicMessage*>(new msg::Paused(group_name_)) : static_cast<msg::BasicMessage*>(new msg::Resumed(group_name_))));
+}
+
+void GroupProcessor::HandleRestart(const msg::Restart&)
+{
+	// First pause the processor if it's running
+	if( state_ == play_state )
+	{
+		TogglePause();
+		server_queue_->push(unique_ptr<msg::Paused>(new msg::Paused(group_name_)));
+	}
+	// Restart each source
+	for_each( channels_.begin(), channels_.end(), [this](ChannelPtrs::value_type& that)
+	{
+		Channel& ch = *that.second.get();
+
+		GroupProcessor::Source& src = ch.src_;
+		src.Restart();
+
+		GroupProcessor::Channel::Stats& stats = ch.stats_;
+		stats.bytes_sent_ = 0;
+
+		server_queue_->push(unique_ptr<msg::Restarted>(new msg::Restarted(ch.name_)));
+	});
+	// Reset group stats
+	stats_.prev_elapsed_ = ClockDuration(0);
 }
 
 void GroupProcessor::TogglePause()

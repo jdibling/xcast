@@ -85,28 +85,36 @@ void InterfaceProcessor::ProcessInterfaceEvent_KeyPress(const INPUT_RECORD& ir)
 
 void InterfaceProcessor::OnCommand(char cmd)
 {
+	bool handled = false;
 	DebugMessage(Formatter() << "InterfaceProcessor Command '" << cmd << "'");
 	switch( cmd )
 	{
 	case 'Q' :	// quit command
 		server_queue_->push(unique_ptr<msg::ThreadDie>(new msg::ThreadDie));
-		DebugMessage(Formatter() << "InterfaceProcessor Command '" << cmd << "' Handled");
+		handled = true;
 		break;
 
 	case 'S' :	// stats command
 		server_queue_->push(unique_ptr<msg::RequestProgress>(new msg::RequestProgress(msg::RequestProgress::indiv_progress)));
 		server_queue_->push(unique_ptr<msg::RequestProgress>(new msg::RequestProgress(msg::RequestProgress::total_progress)));
-		DebugMessage(Formatter() << "InterfaceProcessor Command '" << cmd << "' Handled");
+		handled = true;
 		break;
 
 	case 'P' :	// Pause
 		server_queue_->push(unique_ptr<msg::TogglePause>(new msg::TogglePause));
-		DebugMessage(Formatter() << "InterfaceProcessor Command '" << cmd << "' Handled");
+		handled = true;
+		break;
+
+	case 'R' :	// Restart
+		server_queue_->push(unique_ptr<msg::Restart>(new msg::Restart()));
+		handled = true;
 		break;
 
 	default:
 		break;
 	}
+
+	DebugMessage(Formatter() << "InterfaceProcessor Command '" << cmd << "' " << (handled?"Handled" : "Not Handled"));
 }
 
 void InterfaceProcessor::HandleInternalCommand(const msg::InternalCommand& cmd)

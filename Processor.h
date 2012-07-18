@@ -70,6 +70,7 @@ private:
 	void HandleThreadDie(const msg::ThreadDie& die);
 	void HandleRequestProgress(const msg::RequestProgress& req_prog);
 	void HandleSetPauseState(const msg::SetPauseState& set);
+	void HandleRestart(const msg::Restart&);
 
 	enum State { play_state, pause_state, die_state } state_;
 	inline bool IsRunState() { return state_ != die_state; }
@@ -107,6 +108,8 @@ private:
 		xcast::PacketTime	cur_packet_time_;		// time of current (next) packet
 
 		unsigned ReadNext();
+		void Restart();
+
 	private:
 		CaptureApi	cap_;
 	};

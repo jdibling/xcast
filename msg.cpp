@@ -67,6 +67,16 @@ void SetPauseState::Handle(MessageHandler& handler)
 	handler.HandleSetPauseState(*this);
 }
 
+void Restart::Handle(MessageHandler& handler)
+{
+	handler.HandleRestart(*this);
+}
+
+void Restarted::Handle(MessageHandler& handler)
+{
+	handler.HandleRestarted(*this);
+}
+
 void Paused::Handle(MessageHandler& handler)
 {
 	handler.HandlePaused(*this);

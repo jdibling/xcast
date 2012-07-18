@@ -145,6 +145,23 @@ namespace msg
 		~AutoPaused() {};
 	};
 
+	class Restart : public BasicMessage
+	{
+	public:
+		Restart() {};
+		virtual ~Restart() {};
+		void Handle(MessageHandler&);
+	};
+
+	class Restarted : public BasicMessage
+	{
+	public:
+		Restarted(const std::string& chan) : chan_(chan) {};
+		virtual ~Restarted() {};
+		void Handle(MessageHandler&);
+		std::string chan_;
+	};
+
 	class Paused : public BasicMessage
 	{
 	public:
@@ -183,6 +200,8 @@ namespace msg
 		virtual void HandleAutoPaused(const AutoPaused&) {};
 		virtual void HandleTogglePause(const TogglePause&) {};
 		virtual void HandleSetPauseState(const SetPauseState&) {};
+		virtual void HandleRestart(const Restart&) {};
+		virtual void HandleRestarted(const Restarted&) {};
 		virtual void HandlePaused(const Paused&) {};
 		virtual void HandleResumed(const Resumed&) {};
 		virtual void HandleInternalCommand(const InternalCommand&) {};
