@@ -25,8 +25,8 @@ namespace utils
 
 	const unsigned 
 		ver_major = 0,
-		ver_minor = 4,
-		ver_build = 6;
+		ver_minor = 5,
+		ver_build = 7;
 
 	inline std::string ver_string()
 	{

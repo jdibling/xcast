@@ -14,8 +14,6 @@ using std::string;
 using std::ifstream;
 using std::stringstream;
 #include <iostream>
-using std::cerr;
-using std::cout;
 #include <iomanip>
 using std::endl;
 using std::right;
@@ -243,7 +241,7 @@ Options opts::parse_command_line(int ac, char* av[])
 			}
 			else
 			{
-				cerr << "Malformed Channel Definition String: '" << line << "' -- Ignored" << endl;
+				printf("Malformed Channel Definition String: '%s' -- Ignored", line.c_str());
 				abort = true;
 			}
 		}
@@ -297,9 +295,9 @@ Options opts::parse_command_line(int ac, char* av[])
 			{
 				xcast::PacketTime pt;
 				if( rm[Y].matched )
-					pt.m_ = boost::lexical_cast<int>(rm[Y]);
+					pt.m_ = boost::lexical_cast<int>(rm[M]);
 				if( rm[M].matched )
-					pt.y_ = boost::lexical_cast<int>(rm[M]);
+					pt.y_ = boost::lexical_cast<int>(rm[Y]);
 				if( rm[D].matched )
 					pt.d_ = boost::lexical_cast<int>(rm[D]);
 				if( rm[HH].matched )
@@ -315,7 +313,7 @@ Options opts::parse_command_line(int ac, char* av[])
 			}
 			else
 			{
-				cerr << "Malformed Pause String:\n\t Line = '" << line << "'\n\tFile = '" << pause_file << "'\n\t" << endl;
+				printf("Malformed Pause String:\n\t Line = '%s'\n\tFile = '%s'\n\t", line.c_str(), pause_file.c_str());
 				abort = true;
 			}
 		}
@@ -387,23 +385,27 @@ Options opts::parse_command_line(int ac, char* av[])
 	}
 
 	/***	HANDLE ERRORS, SHOW HELP SCREEN ***/
-	cerr << utils::ver_string() << endl;
+	printf(utils::ver_string().c_str());
 
 	if( abort )
 	{
 		mode = HelpMode;
-		cerr << "Command Syntax Error." << endl;
+		printf("Command Syntax Error.");
 	}
 		
 	if( mode == HelpMode )
 	{
-		cerr << help_options << endl;
+		stringstream ss;
+		ss << help_options;
+		printf(ss.str().c_str());
 		throwx(dibcore::ex::silent_exception());
 	}
 
 	if( mode == ShowMode )
 	{
-		cerr << "*** CONFIGURED PARAMETERS ***" << endl;
+		stringstream ss;
+		ss << "*** CONFIGURED PARAMETERS ***" << endl;
+		printf(ss.str().c_str());
 		throwx(dibcore::ex::silent_exception());
 	}
 

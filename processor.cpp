@@ -332,9 +332,9 @@ void GroupProcessor::operator()()
 
 		Teardown();
 	}
-	catch( const std::exception& ex )
+	catch( const std::exception& ex)
 	{
-		cerr << ex.what() << endl;
+		server_queue_->push(std::unique_ptr<msg::BasicMessage>(new msg::LogMessage(ex.what())));
 		return;
 	}
 }

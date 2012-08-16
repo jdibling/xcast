@@ -344,7 +344,6 @@ void InterfaceProcessor::operator()()
 	catch(std::exception& ex)
 	{
 		server_queue_->push(unique_ptr<msg::LogMessage>(new msg::LogMessage(ex.what())));
-		cerr << ex.what();
 		Teardown();
 		throw;
 	}

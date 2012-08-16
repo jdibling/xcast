@@ -57,7 +57,9 @@ public:
 	:	opts_(opts),
 		server_queue_(new msg::MsgQueue),
 		state_(run_state),
-		ifc_thread_(unique_ptr<InterfaceProcessor>(new InterfaceProcessor(server_queue_)))
+		ifc_thread_(unique_ptr<InterfaceProcessor>(new InterfaceProcessor(server_queue_))),
+		stdout_(GetStdHandle(STD_OUTPUT_HANDLE)),
+		stderr_(GetStdHandle(STD_ERROR_HANDLE))
 	{
 	}
 	void run();
@@ -81,11 +83,19 @@ private:
 	void DebugMessage(const string& msg) const
 	{
 		if( opts_.verbose_ )
-			clog << "XCAST App " << msg << endl;
+		{
+			string copy = msg;
+			copy += "\n";
+			DWORD written = 0;
+			WriteFile(stderr_, copy.c_str(), static_cast<DWORD>(copy.length()), &written, 0);
+		}
 	}
 	void LogMessage(const string& msg) const
 	{
-		cout << msg << endl;
+		string copy = msg;
+		copy += "\n";
+		DWORD written = 0;
+		WriteFile(stdout_, copy.c_str(), static_cast<DWORD>(copy.length()), &written, 0);
 	}
 
 	void TermInterface();
@@ -98,6 +108,8 @@ private:
 	typedef Threads<GroupProcessor>			GroupThreads;
 	InterfaceThread							ifc_thread_;
 	GroupThreads								grp_threads_;
+	HANDLE									stdout_,		
+											stderr_;
 };
 
 void App::TermInterface()
@@ -207,21 +219,20 @@ void App::HandleGroupProgressReport(const msg::GroupProgress& prog)
 		speed = prog.bytes_sent_ / (int64_t)(ceil((double)prog.ttl_elapsed_.count() / 1000.0));
 	
 	string chid = Formatter() << "TOTAL-" << prog.group_;
-	cout 
+	LogMessage(Formatter() 
 		<< setw(21) << left << chid << setw(0) << " " 
 		<< as_bytes(prog.bytes_sent_,true) << " " << setw(3) << right << (int)floor((float(prog.cur_src_byte_)/float(prog.max_src_byte_))*100.0f) << "%" << "\t" 
 		<< as_bytes(speed*8,true) << "/sec" 
-		<< " Next: " << prog.next_packet_ 
-		<< endl;
+		<< " Next: " << prog.next_packet_ );
 }
 
 void App::HandleChannelProgressReport(const msg::ChannelProgress& prog) 
 {
 	string chid = Formatter() << prog.group_ << "/" << prog.channel_;
-	cout << setw(21) << left << chid << setw(0) << " " 
+	LogMessage(Formatter() 
+		<< setw(21) << left << chid << setw(0) << " " 
 		<< as_bytes(prog.cur_src_byte_,true) << " " << setw(3) << right << (int)floor((float(prog.cur_src_byte_)/float(prog.max_src_byte_))*100.0f) << "%" 
-		<< " Next: " << prog.packet_time_ 
-		<< endl; 
+		<< " Next: " << prog.packet_time_ );
 }
 
 void App::HandleTogglePause(const msg::TogglePause&) 
@@ -257,6 +268,21 @@ void App::run()
 		grp_threads_.threads_.push_back(GroupThread(unique_ptr<GroupProcessor>(new GroupProcessor("Group", this->opts_, server_queue_, false))));
 	}	
 
+	LogMessage("=== XCAST PARAMETERS ===");
+	LogMessage(Formatter()<<opts_.channels_.size() << " Channels:");
+	for_each(opts_.channels_.begin(), opts_.channels_.end(), [this](const opts::ChannelDesc& ch)
+	{
+		this->LogMessage(Formatter() << "\t" << ch.name_ << "\t[" << ch.group_ << ":" << ch.port_ << "] : " << ch.file_);
+	});
+	LogMessage(Formatter()<<opts_.pauses_.size() << " Pauses:");
+	for_each(opts_.pauses_.begin(), opts_.pauses_.end(), [this](const xcast::PacketTime& pt)
+	{
+		this->LogMessage(Formatter() << "\t" << pt.format());
+	});
+	LogMessage(Formatter() << "TTL: " << opts_.ttl_);
+	LogMessage(Formatter() << "Packet Delay: " << opts_.delay_);
+	LogMessage("=========================");
+
 	DebugMessage("App Loop Enter");
 	///*** WAIT FOR WORK ***///
 	while( state_ == run_state )
@@ -271,7 +297,7 @@ void App::run()
 
 	ifc_thread_.join();
 
-	cout << "DONE" << endl;
+	LogMessage("DONE");
 }
 
 int main(int ac, char* av[])
@@ -289,7 +315,7 @@ int main(int ac, char* av[])
 	}
 	catch( const dibcore::ex::generic_error& ex )
 	{
-		cerr << ex.what() << endl;
+		printf(ex.what());
 		return 43;
 	}
 	catch( const std::exception& ex )
