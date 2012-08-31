@@ -82,7 +82,7 @@ public:
 private:
 	void DebugMessage(const string& msg) const
 	{
-		if( opts_.verbose_ )
+		if( opts_.out_fmt_ == opts::verbose_fmt  )
 		{
 			string copy = msg;
 			copy += "\n";
@@ -128,7 +128,7 @@ void App::HandleLogMessage(const msg::LogMessage& log)
 
 void App::HandleDebugMessage(const msg::DebugMessage& msg)
 {
-	if( opts_.verbose_ )
+	if( opts_.out_fmt_ == opts::verbose_fmt  )
 		LogMessage(msg.msg_);
 }
 
@@ -154,7 +154,7 @@ void App::HandleHeartBeat(const msg::HeartBeat&)
 	DebugMessage("HB");
 	for( GroupThreads::ThreadVec::const_iterator thread = grp_threads_.threads_.begin(); thread != grp_threads_.threads_.end(); ++thread )
 	{
-		if( opts_.verb_prog_ )
+		if( opts_.out_fmt_ == opts::verbose_fmt  )
 			thread->ctx_->oob_queue_->push(unique_ptr<msg::BasicMessage>(new msg::RequestProgress(msg::RequestProgress::indiv_progress)));
 		thread->ctx_->oob_queue_->push(unique_ptr<msg::BasicMessage>(new msg::RequestProgress(msg::RequestProgress::total_progress)));
 	}
@@ -214,25 +214,55 @@ void App::HandleRequestProgress(const msg::RequestProgress& prog)
 
 void App::HandleGroupProgressReport(const msg::GroupProgress& prog) 
 {
-	int64_t speed = 0;
-	if( prog.ttl_elapsed_.count() > 0 )
-		speed = prog.bytes_sent_ / (int64_t)(ceil((double)prog.ttl_elapsed_.count() / 1000.0));
+	if( opts_.show_type_ == opts::show_channels )
+		return;
+
+	if( opts_.out_fmt_ == opts::raw_fmt )
+	{
+		LogMessage( Formatter() 
+			<< prog.group_ << " (TOTAL, " << prog.num_groups_ << " Groups)" << ","
+			<< "Sent=" << prog.bytes_sent_ << ","
+			<< "Cur=" << prog.cur_src_byte_ << ","
+			<< "Max=" << prog.max_src_byte_ << ","
+			<< "Elapsed=" << prog.ttl_elapsed_ << ","
+			<< "Next=" << prog.next_packet_
+			);
+	}
+	else
+	{
+		int64_t speed = 0;
+		if( prog.ttl_elapsed_.count() > 0 )
+			speed = prog.bytes_sent_ / (int64_t)(ceil((double)prog.ttl_elapsed_.count() / 1000.0));
 	
-	string chid = Formatter() << "TOTAL-" << prog.group_;
-	LogMessage(Formatter() 
-		<< setw(21) << left << chid << setw(0) << " " 
-		<< as_bytes(prog.bytes_sent_,true) << " " << setw(3) << right << (int)floor((float(prog.cur_src_byte_)/float(prog.max_src_byte_))*100.0f) << "%" << "\t" 
-		<< as_bytes(speed*8,true) << "/sec" 
-		<< " Next: " << prog.next_packet_ );
+		string chid = Formatter() << prog.group_ << " (TOTAL)" << ",";
+		LogMessage(Formatter() 
+			<< setw(21) << left << chid << setw(0) << " " 
+			<< as_bytes(prog.bytes_sent_,true) << " " << setw(3) << right << (int)floor((float(prog.cur_src_byte_)/float(prog.max_src_byte_))*100.0f) << "%" << "\t" 
+			<< as_bytes(speed*8,true) << "/sec" 
+			<< " Next: " << prog.next_packet_ );
+	}
 }
 
 void App::HandleChannelProgressReport(const msg::ChannelProgress& prog) 
 {
-	string chid = Formatter() << prog.group_ << "/" << prog.channel_;
-	LogMessage(Formatter() 
-		<< setw(21) << left << chid << setw(0) << " " 
-		<< as_bytes(prog.cur_src_byte_,true) << " " << setw(3) << right << (int)floor((float(prog.cur_src_byte_)/float(prog.max_src_byte_))*100.0f) << "%" 
-		<< " Next: " << prog.packet_time_ );
+	if( opts_.out_fmt_ == opts::raw_fmt )
+	{
+		LogMessage( Formatter()
+			<< prog.group_ << "/" << prog.channel_ << ","
+			<< "Sent=" << prog.bytes_sent_  << ","
+			<< "Cur=" << prog.cur_src_byte_ << ","
+			<< "Max=" << prog.max_src_byte_ << ","
+			<< "Next=" << prog.packet_time_ 
+		);
+	}
+	else
+	{
+		string chid = Formatter() << prog.group_ << "/" << prog.channel_;
+		LogMessage(Formatter() 
+			<< setw(21) << left << chid << setw(0) << " " 
+			<< as_bytes(prog.cur_src_byte_,true) << " " << setw(3) << right << (int)floor((float(prog.cur_src_byte_)/float(prog.max_src_byte_))*100.0f) << "%" 
+			<< " Next: " << prog.packet_time_ );
+	}
 }
 
 void App::HandleTogglePause(const msg::TogglePause&) 

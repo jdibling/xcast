@@ -21,15 +21,17 @@ namespace opts
 	typedef std::vector<ChannelDesc> ChannelDescs;
 	typedef std::vector<xcast::PacketTime> PacketTimes;
 
+	typedef enum {normal_fmt, verbose_fmt, raw_fmt} OutputFormat;
+	typedef enum {show_channels, show_groups, show_both} ShowType;
 	struct Options
 	{
 		ChannelDescs	channels_;
 		PacketTimes		pauses_;
 		unsigned		ttl_;
 		unsigned		delay_;
-		bool			verb_prog_;
-		bool			verbose_;
-		Options() : ttl_(0), delay_(0), verb_prog_(false), verbose_(false) {};
+		ShowType		show_type_;
+		OutputFormat	out_fmt_;
+		Options() : ttl_(0), delay_(0), out_fmt_(normal_fmt), show_type_(show_groups) {};
 	};
 
 	Options parse_command_line(int ac, char* av[]);

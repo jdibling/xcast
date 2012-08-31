@@ -101,6 +101,7 @@ namespace msg
 		uint64_t						bytes_sent_;
 		boost::chrono::milliseconds		ttl_elapsed_;
 		std::string						next_packet_;
+		size_t							num_groups_;
 	};
 
 	class ChannelProgress : public BasicMessage

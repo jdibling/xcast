@@ -222,7 +222,7 @@ void GroupProcessor::HandleRequestProgress(const msg::RequestProgress& req)
 	{
 		grp_prog->ttl_elapsed_ += boost::chrono::duration_cast<boost::chrono::milliseconds>(Clock::now() - stats_.playback_start_);
 	}
-	
+	 
 	std::set<xcast::PacketTime> packet_times;
 
 	for_each( channels_.begin(), channels_.end(), [this, &grp_prog, &packet_times, &req](ChannelPtrs::value_type& that)
@@ -250,6 +250,8 @@ void GroupProcessor::HandleRequestProgress(const msg::RequestProgress& req)
 
 	if( !packet_times.empty() )
 		grp_prog->next_packet_ = packet_times.begin()->format();
+
+	grp_prog->num_groups_ = channels_.size();
 
 	if( req.type_ == msg::RequestProgress::total_progress )
 		server_queue_->push(unique_ptr<msg::BasicMessage>(std::move(grp_prog)));

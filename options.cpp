@@ -138,8 +138,11 @@ namespace
 	{
 		static const OptName
 			/***	INTERFACE/FORMATTING OPTIONS	***/
-			VerbProg	= OptName("display-channel-progress","Display Verbose Progress Messages"),
-			Verbose		= OptName("verbose","Display Verbose Messages")
+			ProgShowChan	= OptName("prog-channels-only","Display Channel Progress Only"),
+			ProgShowGroup	= OptName("prog-groups-only", "Display Group Progress Only"),
+			ProgShowAll		= OptName("prog-all", "Display Group & Channel Progress"),
+			Verbose			= OptName("verbose","Display Verbose Messages"),
+			RawOut			= OptName("raw-output", "Raw Progress Reports")
 			;
 	};
 
@@ -370,10 +373,24 @@ Options opts::parse_command_line(int ac, char* av[])
 	}
 
 	/***	PROCESS INTERFACE/FORMATTING OPTIONS	***/
+	/*
+		ProgShowChan	= OptName("prog-channels-only","Display Channel Progress Only"),
+		ProgShowGroup	= OptName("prog-groups-only", "Display Group Progress Only"),
+		ProgShowAll		= OptName("prog-all", "Display Group & Channel Progress")
+		Verbose			= OptName("verbose","Display Verbose Messages"),
+		RawOut			= OptName("raw-output", "Raw Progress Reports")
+	*/
+
+	int show_type =		opts::show_groups,
+		fmt_type =		opts::normal_fmt;
+
 	options_description ifc_o("Interface/Formatting Options");
 	ifc_o.add_options()
-		(Interface::VerbProg.fmt_,	bool_switch(&ret.verb_prog_)->zero_tokens(),	Interface::VerbProg.desc_)
-		(Interface::Verbose.fmt_,	bool_switch(&ret.verbose_)->zero_tokens(),		Interface::Verbose.desc_)
+		(Interface::ProgShowChan.fmt_,	value<int>(&show_type)->implicit_value((int)opts::show_channels),	Interface::ProgShowChan.desc_ )
+		(Interface::ProgShowGroup.fmt_,	value<int>(&show_type)->implicit_value((int)opts::show_groups),		Interface::ProgShowGroup.desc_ )
+		(Interface::ProgShowAll.fmt_,	value<int>(&show_type)->implicit_value((int)opts::show_both),		Interface::ProgShowAll.desc_ )
+		(Interface::Verbose.fmt_,		value<int>(&fmt_type)->implicit_value((int)opts::verbose_fmt),		Interface::Verbose.desc_ )
+		(Interface::RawOut.fmt_,		value<int>(&fmt_type)->implicit_value((int)opts::raw_fmt),			Interface::RawOut.desc_ )
 	;
 	help_options.add(ifc_o);
 	if( !abort && (mode==RunMode||mode==ShowMode) )
@@ -382,6 +399,9 @@ Options opts::parse_command_line(int ac, char* av[])
 		//store(command_line_parser(ac,av).options(ifc_o).allow_unregistered().run(), ifc_vm);
 		store_to(ifc_o, ifc_vm, ac, av);
 		notify(ifc_vm);
+
+		ret.out_fmt_ = static_cast<opts::OutputFormat>(fmt_type);
+		ret.show_type_ = static_cast<opts::ShowType>(show_type);
 	}
 
 	/***	HANDLE ERRORS, SHOW HELP SCREEN ***/
