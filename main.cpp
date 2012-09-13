@@ -154,11 +154,8 @@ void App::HandleHeartBeat(const msg::HeartBeat&)
 	DebugMessage("HB");
 	for( GroupThreads::ThreadVec::const_iterator thread = grp_threads_.threads_.begin(); thread != grp_threads_.threads_.end(); ++thread )
 	{
-		if( opts_.out_fmt_ == opts::verbose_fmt  )
-			thread->ctx_->oob_queue_->push(unique_ptr<msg::BasicMessage>(new msg::RequestProgress(msg::RequestProgress::indiv_progress)));
-		thread->ctx_->oob_queue_->push(unique_ptr<msg::BasicMessage>(new msg::RequestProgress(msg::RequestProgress::total_progress)));
+		thread->ctx_->oob_queue_->push(unique_ptr<msg::BasicMessage>(new msg::RequestProgress(opts_.show_type_)));
 	}
-
 }
 void App::HandleThreadDie(const msg::ThreadDie&) 
 {
@@ -214,11 +211,9 @@ void App::HandleRequestProgress(const msg::RequestProgress& prog)
 
 void App::HandleGroupProgressReport(const msg::GroupProgress& prog) 
 {
-	if( opts_.show_type_ == opts::show_channels )
-		return;
-
-	if( opts_.out_fmt_ == opts::raw_fmt )
+	switch( opts_.out_fmt_ )
 	{
+	case opts::raw_fmt :
 		LogMessage( Formatter() 
 			<< prog.group_ << " (TOTAL, " << prog.num_groups_ << " Groups)" << ","
 			<< "Sent=" << prog.bytes_sent_ << ","
@@ -227,19 +222,22 @@ void App::HandleGroupProgressReport(const msg::GroupProgress& prog)
 			<< "Elapsed=" << prog.ttl_elapsed_ << ","
 			<< "Next=" << prog.next_packet_
 			);
-	}
-	else
-	{
-		int64_t speed = 0;
-		if( prog.ttl_elapsed_.count() > 0 )
-			speed = prog.bytes_sent_ / (int64_t)(ceil((double)prog.ttl_elapsed_.count() / 1000.0));
+		break;
+
+	default :
+		{
+			int64_t speed = 0;
+			if( prog.ttl_elapsed_.count() > 0 )
+				speed = prog.bytes_sent_ / (int64_t)(ceil((double)prog.ttl_elapsed_.count() / 1000.0));
 	
-		string chid = Formatter() << prog.group_ << " (TOTAL)" << ",";
-		LogMessage(Formatter() 
-			<< setw(21) << left << chid << setw(0) << " " 
-			<< as_bytes(prog.bytes_sent_,true) << " " << setw(3) << right << (int)floor((float(prog.cur_src_byte_)/float(prog.max_src_byte_))*100.0f) << "%" << "\t" 
-			<< as_bytes(speed*8,true) << "/sec" 
-			<< " Next: " << prog.next_packet_ );
+			string chid = Formatter() << prog.group_ << " (TOTAL)" << ",";
+			LogMessage(Formatter() 
+				<< setw(21) << left << chid << setw(0) << " " 
+				<< as_bytes(prog.bytes_sent_,true) << " " << setw(3) << right << (int)floor((float(prog.cur_src_byte_)/float(prog.max_src_byte_))*100.0f) << "%" << "\t" 
+				<< as_bytes(speed*8,true) << "/sec" 
+				<< " Next: " << prog.next_packet_ );
+		}
+		break;
 	}
 }
 

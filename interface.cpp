@@ -95,8 +95,7 @@ void InterfaceProcessor::OnCommand(char cmd)
 		break;
 
 	case 'S' :	// stats command
-		server_queue_->push(unique_ptr<msg::RequestProgress>(new msg::RequestProgress(msg::RequestProgress::indiv_progress)));
-		server_queue_->push(unique_ptr<msg::RequestProgress>(new msg::RequestProgress(msg::RequestProgress::total_progress)));
+		server_queue_->push(unique_ptr<msg::RequestProgress>(new msg::RequestProgress(opts::show_both)));
 		handled = true;
 		break;
 

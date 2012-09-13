@@ -83,10 +83,9 @@ namespace msg
 	class RequestProgress : public BasicMessage
 	{
 	public:
-		enum Type { total_progress, indiv_progress } type_;
-		RequestProgress(Type type) : type_(type) {};
-
+		RequestProgress(opts::ShowType show_type) : type_(show_type) {};
 		void Handle(MessageHandler&);
+		opts::ShowType	type_;
 	};
 
 	class GroupProgress : public BasicMessage

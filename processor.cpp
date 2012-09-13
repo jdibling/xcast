@@ -244,7 +244,7 @@ void GroupProcessor::HandleRequestProgress(const msg::RequestProgress& req)
 		grp_prog->cur_src_byte_ += ch.src_.cur_byte_;
 		grp_prog->max_src_byte_ += ch.src_.ttl_bytes_;
 
-		if( req.type_ == msg::RequestProgress::indiv_progress )
+		if( req.type_ == opts::show_both || req.type_ == opts::show_channels )
 			server_queue_->push(unique_ptr<msg::BasicMessage>(std::move(ch_prog)));
 	});
 
@@ -253,7 +253,7 @@ void GroupProcessor::HandleRequestProgress(const msg::RequestProgress& req)
 
 	grp_prog->num_groups_ = channels_.size();
 
-	if( req.type_ == msg::RequestProgress::total_progress )
+	if( req.type_ == opts::show_both || req.type_ == opts::show_groups )
 		server_queue_->push(unique_ptr<msg::BasicMessage>(std::move(grp_prog)));
 }
 
