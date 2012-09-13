@@ -8,7 +8,7 @@ namespace xcast
 {
 	struct PacketTime
 	{
-		PacketTime() : y_(-1), m_(-1), d_(-1), hh_(-1), mm_(-1), ss_(-1), ms_(-1) {};
+		PacketTime() : y_(0), m_(0), d_(0), hh_(0), mm_(0), ss_(0), ms_(0) {};
 		bool operator<(const PacketTime& rhs) const;
 		int	y_, m_, d_, hh_, mm_, ss_, ms_;
 		std::string format() const;

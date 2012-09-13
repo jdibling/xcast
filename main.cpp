@@ -14,6 +14,7 @@ using namespace std;
 #include "msg.h"
 #include "Processor.h"
 #include "interface.h"
+#include "version.h"
 
 #include <boost/thread.hpp>
 #include "threads.h"
@@ -333,6 +334,8 @@ int main(int ac, char* av[])
 	/** Parse Options **/
 	try
 	{
+		cout << VER_PRODUCTNAME_STR << "\t" << VER_FILE_VERSION_STR << endl;
+
 		opts::Options o = opts::parse_command_line(ac, av);
 		App app(o);
 		app.run();

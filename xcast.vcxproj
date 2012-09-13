@@ -103,6 +103,12 @@
       <Profile>true</Profile>
       <AdditionalLibraryDirectories>$(SPRYWARE_ROOT)bin\Debug64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
+    <PreBuildEvent>
+      <Command>$(ProjectDir)\tools\build_inc.rb $(ProjectDir)version.h</Command>
+    </PreBuildEvent>
+    <PreBuildEvent>
+      <Message>Incrementing Build Number</Message>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -138,6 +144,12 @@
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>$(SPRYWARE_ROOT)MISApi\x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
+    <PreBuildEvent>
+      <Command>$(ProjectDir)\tools\build_inc.rb $(ProjectDir)version.h</Command>
+    </PreBuildEvent>
+    <PreBuildEvent>
+      <Message>Incrementing Build Number</Message>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="interface.cpp" />
@@ -154,9 +166,14 @@
     <ClInclude Include="msg.h" />
     <ClInclude Include="options.h" />
     <ClInclude Include="Processor.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="threads.h" />
     <ClInclude Include="utils.h" />
+    <ClInclude Include="version.h" />
     <ClInclude Include="xcast.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="version.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

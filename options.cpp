@@ -14,6 +14,7 @@ using std::string;
 using std::ifstream;
 using std::stringstream;
 #include <iostream>
+using std::cerr;
 #include <iomanip>
 using std::endl;
 using std::right;
@@ -276,6 +277,7 @@ Options opts::parse_command_line(int ac, char* av[])
 		// split the input in to lines			
 		typedef char_separator<char> cs;
 		tokenizer<cs> lines(buf_str.begin(), buf_str.end(), cs("\n"));
+		bool any_failed = false;
 		for( tokenizer<cs>::const_iterator it = lines.begin(), end = lines.end(); it != end; ++it )
 		{
 			using boost::trim_copy;
@@ -294,31 +296,80 @@ Options opts::parse_command_line(int ac, char* av[])
 							
 			std::regex rx("^(?:(\\d{2,4})\\/(\\d{1,2})\\/(\\d{1,2})\\s?)?(\\d{1,2}):(\\d{1,2}):?(\\d{1,2})?\\.?(\\d{1,3})?");
 			std::cmatch rm;
-			if( std::regex_search(line.c_str(), rm, rx) )
+			
+			bool valid = false;
+			// trim leading & trailing spaces from string
+			while( !line.empty() && (line.front() == ' ' || line.front() == '\t') )	line.erase(0,1);
+			while( !line.empty() && (line.back() == ' ' || line.back() == '\t') )		line.erase(line.size()-1,1);
+
+			if( line.empty() )
 			{
+				valid = true;
+			}
+			else if( std::regex_search(line.c_str(), rm, rx) )
+			{
+				valid = true;
+
 				xcast::PacketTime pt;
-				if( rm[Y].matched )
+				/* YYYY/MM/DD Is optional as a group, but not individually */
+				if( rm[Y].matched && rm[M].matched && rm[D].matched )
+				{
 					pt.m_ = boost::lexical_cast<int>(rm[M]);
-				if( rm[M].matched )
 					pt.y_ = boost::lexical_cast<int>(rm[Y]);
-				if( rm[D].matched )
 					pt.d_ = boost::lexical_cast<int>(rm[D]);
-				if( rm[HH].matched )
+					if( pt.y_ < 1000 )
+						pt.y_ += 2000;
+				}
+				else if( !(rm[Y].matched || rm[M].matched || rm[D].matched) )
+				{
+					pt.m_= pt.y_ = pt.d_ = 0;
+				}
+				else
+				{
+					cerr << "Malformed Pause String: YYYY/MM/DD are optional as a group.  File: " << pause_file << "\n" << line << endl;
+					valid = false;
+				}
+
+				if( !(rm[HH].matched && rm[MM].matched) )
+				{
+					cerr << "Malformed Pause String: HH:MM required.  File: " << pause_file << "\n" << line << endl;
+					valid = false;
+				}
+				else
+				{
 					pt.hh_ = boost::lexical_cast<int>(rm[HH]);
-				if( rm[MM].matched )
 					pt.mm_ = boost::lexical_cast<int>(rm[MM]);
+				}
+
+				/* SS optional */
 				if( rm[SS].matched )
+				{
 					pt.ss_ = boost::lexical_cast<int>(rm[SS]);
-				if( rm[MS].matched )
-					pt.ms_ = boost::lexical_cast<int>(rm[MS]);
-					
-				ret.pauses_.push_back(pt);
+					if( rm[MS].matched )
+					{
+						pt.ms_ = boost::lexical_cast<int>(rm[MS]);
+					}
+				}
+				else
+				{
+					if( rm[MS].matched )
+					{
+						cerr << "Malformed Pause String: Can't specify milliseconds (.MMM) without seconds (:SS).  File: " << pause_file << "\n" << line << endl;
+						valid = false;
+					}
+				}
+
+				if( valid )
+					ret.pauses_.push_back(pt);
+				else
+					any_failed = true;
 			}
-			else
-			{
-				printf("Malformed Pause String:\n\t Line = '%s'\n\tFile = '%s'\n\t", line.c_str(), pause_file.c_str());
-				abort = true;
-			}
+		}
+
+		if( any_failed )
+		{
+			cerr << "Pause file syntax:		[YYYY/MM/DD] HH:MM[:SS.MMM]" << endl;
+			throwx(dibcore::ex::silent_exception());
 		}
 	}
 	
