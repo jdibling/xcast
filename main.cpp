@@ -17,6 +17,8 @@ using namespace std;
 #include "version.h"
 
 #include <boost/thread.hpp>
+#include <boost/algorithm/string/trim.hpp>
+
 #include "threads.h"
 
 #include <Windows.h>
@@ -137,7 +139,7 @@ void App::HandleAutoPaused(const msg::AutoPaused& ap)
 {
 	LogMessage(Formatter()
 		<< "AUTO-PAUSED Group '" << ap.grp_ << "'. "
-		<< "Next Packet On Channel '" << ap.chan_ << "' @ '" << ap.pt_.format() << "'.");
+		<< "Next Packet On Channel '" << ap.chan_ << "' @ " << ap.pt_.format() << ".");
 }
 
 void App::HandlePaused(const msg::Paused& p) 
@@ -221,7 +223,7 @@ void App::HandleGroupProgressReport(const msg::GroupProgress& prog)
 			<< "Cur=" << prog.cur_src_byte_ << ","
 			<< "Max=" << prog.max_src_byte_ << ","
 			<< "Elapsed=" << prog.ttl_elapsed_ << ","
-			<< "Next=" << prog.next_packet_
+			<< "Next=" << boost::trim_copy(prog.next_packet_)
 			);
 		break;
 
@@ -251,7 +253,7 @@ void App::HandleChannelProgressReport(const msg::ChannelProgress& prog)
 			<< "Sent=" << prog.bytes_sent_  << ","
 			<< "Cur=" << prog.cur_src_byte_ << ","
 			<< "Max=" << prog.max_src_byte_ << ","
-			<< "Next=" << prog.packet_time_ 
+			<< "Next=" << boost::trim_copy(prog.packet_time_) 
 		);
 	}
 	else
