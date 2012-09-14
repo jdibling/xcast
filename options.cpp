@@ -322,7 +322,7 @@ Options opts::parse_command_line(int ac, char* av[])
 				}
 				else if( !(rm[Y].matched || rm[M].matched || rm[D].matched) )
 				{
-					pt.m_= pt.y_ = pt.d_ = 0;
+					pt.m_= pt.y_ = pt.d_ = -1;
 				}
 				else
 				{
@@ -349,6 +349,10 @@ Options opts::parse_command_line(int ac, char* av[])
 					{
 						pt.ms_ = boost::lexical_cast<int>(rm[MS]);
 					}
+					else
+					{
+						pt.ms_ = 0;
+					}
 				}
 				else
 				{
@@ -356,6 +360,10 @@ Options opts::parse_command_line(int ac, char* av[])
 					{
 						cerr << "Malformed Pause String: Can't specify milliseconds (.MMM) without seconds (:SS).  File: " << pause_file << "\n" << line << endl;
 						valid = false;
+					}
+					else
+					{
+						pt.ss_ = pt.ms_ = 0;
 					}
 				}
 
