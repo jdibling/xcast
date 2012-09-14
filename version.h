@@ -2,9 +2,9 @@
 #define STRINGIZE(s) STRINGIZE2(s)
 
 #define VERSION_MAJOR               0
-#define VERSION_MINOR               6
-#define VERSION_REVISION            1
-#define VERSION_BUILD               132
+#define VERSION_MINOR               9
+#define VERSION_REVISION            0
+#define VERSION_BUILD               138
 
 #define VER_COMPANYNAME_STR			"SpryWare"
 #define VER_FILE_DESCRIPTION_STR    "xcast -- Simultaneous Capture Playback With Guaranteed Packet Order"

@@ -13,7 +13,8 @@ using dibcore::util::Formatter;
 
 #include <boost/chrono.hpp>
 #include <boost/lexical_cast.hpp>
-
+#include <boost/filesystem.hpp>
+namespace fs = boost::filesystem3;
 
 
 GroupProcessor::GroupProcessor(const std::string& group_name, const opts::Options& o, std::shared_ptr<msg::MsgQueue> server_queue, bool playback_paused) 
@@ -53,14 +54,7 @@ GroupProcessor::Conn::Conn(const std::string& group, unsigned short port, unsign
 
 GroupProcessor::Source::Source(const std::string& cap)
 :	cur_byte_(0),
-	ttl_bytes_([&cap]() -> const uint64_t
-{
-	ifstream fs(cap, ios::in|ios::binary);
-	size_t a = fs.tellg();
-	fs.seekg(0, ios::end);
-	size_t b = fs.tellg();
-	return static_cast<uint64_t>(b-a);
-}	()),
+	ttl_bytes_(fs::file_size(cap)),
 	packet_buf_(64 * 1024, 0),
 	packet_size_(0)
 {
