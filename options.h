@@ -31,6 +31,7 @@ namespace opts
 		unsigned		delay_;
 		ShowType		show_type_;
 		OutputFormat	out_fmt_;
+		bool			show_mode_;	// show parameters and exit if true
 		Options() : ttl_(0), delay_(0), out_fmt_(normal_fmt), show_type_(show_groups) {};
 	};
 

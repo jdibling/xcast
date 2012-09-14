@@ -178,9 +178,9 @@ Options opts::parse_command_line(int ac, char* av[])
 	/***	PROCESS BASE OPTIONS	***/
 	options_description base_options("Base Options");
 	base_options.add_options()
-		(Base::Help.fmt_,		value<int>(&mode)->implicit_value((int)HelpMode),	Base::Help.desc_)
-		(Base::Version.fmt_,	value<int>(&mode)->implicit_value((int)VerMode),	Base::Version.desc_)
-		(Base::Show.fmt_,		value<int>(&mode)->implicit_value((int)ShowMode),	Base::Show.desc_)													
+		(Base::Help.fmt_,		value<int>(&mode)->implicit_value((int)HelpMode)->zero_tokens(),	Base::Help.desc_)
+		(Base::Version.fmt_,	value<int>(&mode)->implicit_value((int)VerMode)->zero_tokens(),	Base::Version.desc_)
+		(Base::Show.fmt_,		value<int>(&mode)->implicit_value((int)ShowMode)->zero_tokens(),	Base::Show.desc_)													
 		;
 	
 	help_options.add(base_options);
@@ -445,11 +445,11 @@ Options opts::parse_command_line(int ac, char* av[])
 
 	options_description ifc_o("Interface/Formatting Options");
 	ifc_o.add_options()
-		(Interface::ProgShowChan.fmt_,	value<int>(&show_type)->implicit_value((int)opts::show_channels),	Interface::ProgShowChan.desc_ )
-		(Interface::ProgShowGroup.fmt_,	value<int>(&show_type)->implicit_value((int)opts::show_groups),		Interface::ProgShowGroup.desc_ )
-		(Interface::ProgShowAll.fmt_,	value<int>(&show_type)->implicit_value((int)opts::show_both),		Interface::ProgShowAll.desc_ )
-		(Interface::Verbose.fmt_,		value<int>(&fmt_type)->implicit_value((int)opts::verbose_fmt),		Interface::Verbose.desc_ )
-		(Interface::RawOut.fmt_,		value<int>(&fmt_type)->implicit_value((int)opts::raw_fmt),			Interface::RawOut.desc_ )
+		(Interface::ProgShowChan.fmt_,	value<int>(&show_type)->implicit_value((int)opts::show_channels)->zero_tokens(),	Interface::ProgShowChan.desc_ )
+		(Interface::ProgShowGroup.fmt_,	value<int>(&show_type)->implicit_value((int)opts::show_groups)->zero_tokens(),		Interface::ProgShowGroup.desc_ )
+		(Interface::ProgShowAll.fmt_,	value<int>(&show_type)->implicit_value((int)opts::show_both)->zero_tokens(),		Interface::ProgShowAll.desc_ )
+		(Interface::Verbose.fmt_,		value<int>(&fmt_type)->implicit_value((int)opts::verbose_fmt)->zero_tokens(),		Interface::Verbose.desc_ )
+		(Interface::RawOut.fmt_,		value<int>(&fmt_type)->implicit_value((int)opts::raw_fmt)->zero_tokens(),			Interface::RawOut.desc_ )
 	;
 	help_options.add(ifc_o);
 	if( !abort && (mode==RunMode||mode==ShowMode) )
@@ -464,7 +464,6 @@ Options opts::parse_command_line(int ac, char* av[])
 	}
 
 	/***	HANDLE ERRORS, SHOW HELP SCREEN ***/
-	printf(utils::ver_string().c_str());
 
 	if( abort )
 	{
@@ -475,16 +474,29 @@ Options opts::parse_command_line(int ac, char* av[])
 	if( mode == HelpMode )
 	{
 		stringstream ss;
-		ss << help_options;
+		ss 
+			<<	"\nCapture File Multicaster\n"
+			<<	"\n"
+			<<	"\txcast (/?|--help|--version|--show)\n"
+			<<	"\txcast (channel-name) (group) (port) (capture-file) [options]\n"
+			<<	"\txcast (-f channel-file) [-F autopause-file] [options]\n"
+			<<	"\n"
+			<< help_options;
 		printf(ss.str().c_str());
 		throwx(dibcore::ex::silent_exception());
 	}
 
 	if( mode == ShowMode )
 	{
-		stringstream ss;
-		ss << "*** CONFIGURED PARAMETERS ***" << endl;
-		printf(ss.str().c_str());
+		ret.show_mode_ = true;
+	}
+	else
+	{
+		ret.show_mode_ = false;
+	}
+	
+	if( mode == VerMode )
+	{
 		throwx(dibcore::ex::silent_exception());
 	}
 

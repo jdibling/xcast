@@ -128,7 +128,6 @@ void GroupProcessor::LogMessage(const std::string& msg) const
 void GroupProcessor::Teardown()
 {
 	server_queue_->push(unique_ptr<msg::BasicMessage>(new msg::ThreadDead(group_name_)));	
-	LogMessage(Formatter() << "Processor ' " << group_name_ << "' Teardown Complete");
 }
 
 void GroupProcessor::HandleThreadDie(const msg::ThreadDie&)

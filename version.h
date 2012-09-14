@@ -4,15 +4,29 @@
 #define VERSION_MAJOR               0
 #define VERSION_MINOR               9
 #define VERSION_REVISION            0
-#define VERSION_BUILD               138
+#define VERSION_BUILD               171
 
 #define VER_COMPANYNAME_STR			"SpryWare"
 #define VER_FILE_DESCRIPTION_STR    "xcast -- Simultaneous Capture Playback With Guaranteed Packet Order"
 #define VER_FILE_VERSION            VERSION_MAJOR, VERSION_MINOR, VERSION_REVISION, VERSION_BUILD
+
+#if defined (VERSION_REVISION) && ( VERSION_REVISION > 0 )
+
 #define VER_FILE_VERSION_STR        STRINGIZE(VERSION_MAJOR)        \
 	"." STRINGIZE(VERSION_MINOR)    \
-	"." STRINGIZE(VERSION_REVISION) \
-	"." STRINGIZE(VERSION_BUILD)    \
+	"r" STRINGIZE(VERSION_REVISION) \
+	" (Build " STRINGIZE(VERSION_BUILD)    \
+	")" \
+
+#else
+
+#define VER_FILE_VERSION_STR        STRINGIZE(VERSION_MAJOR)        \
+	"." STRINGIZE(VERSION_MINOR)    \
+	" (Build " STRINGIZE(VERSION_BUILD)    \
+	")" \
+
+#endif
+
 
 #define VER_PRODUCTNAME_STR         "xcast"
 #define VER_PRODUCT_VERSION         VER_FILE_VERSION
