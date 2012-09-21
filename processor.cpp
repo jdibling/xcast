@@ -54,7 +54,7 @@ GroupProcessor::Conn::Conn(const std::string& group, unsigned short port, unsign
 
 GroupProcessor::Source::Source(const std::string& cap)
 :	cur_byte_(0),
-	ttl_bytes_(fs::file_size(cap)),
+	ttl_bytes_(fs::file_size(fs::absolute(cap))),
 	packet_buf_(64 * 1024, 0),
 	packet_size_(0)
 {
@@ -330,6 +330,7 @@ void GroupProcessor::operator()()
 	catch( const std::exception& ex)
 	{
 		server_queue_->push(std::unique_ptr<msg::BasicMessage>(new msg::LogMessage(ex.what())));
+		Teardown();
 		return;
 	}
 }
