@@ -6,9 +6,13 @@
 *bin/*
 *x64/*
 *x86/*
+*win/x64/*
+*win/x86/*
 *Release/*
 *.suo
 ipch/*
 *.vsp
 *.psess
 version.h-*
+*ipch
+
