@@ -28,6 +28,7 @@
     <ClInclude Include="..\utils.h" />
     <ClInclude Include="..\version.h" />
     <ClInclude Include="..\xcast.h" />
+    <ClInclude Include="interface_win.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
@@ -38,6 +39,7 @@
     <ClCompile Include="..\processor.cpp" />
     <ClCompile Include="..\utils.cpp" />
     <ClCompile Include="..\xcast.cpp" />
+    <ClCompile Include="interface_win.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="version.rc" />
@@ -101,6 +103,7 @@
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>$(IncludePath);$(BOOST_ROOT);$(SPRYWARE_ROOT)misapi\include\;$(SPRYWARE_ROOT)utils\</IncludePath>
     <LibraryPath>$(SPRYWARE_ROOT)\MISApi\X64\Debug;$(BOOST_ROOT)lib\x64\;$(SpryWareDir)misapi\x64\$(Configuration)\;$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)dist\$(Platform)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

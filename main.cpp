@@ -60,7 +60,7 @@ public:
 	:	opts_(opts),
 		server_queue_(new msg::MsgQueue),
 		state_(run_state),
-		ifc_thread_(unique_ptr<InterfaceProcessor>(new InterfaceProcessor(server_queue_))),
+		ifc_thread_(InterfaceProcessor::Create(server_queue_)),
 		stdout_(GetStdHandle(STD_OUTPUT_HANDLE)),
 		stderr_(GetStdHandle(STD_ERROR_HANDLE))
 	{
@@ -119,7 +119,7 @@ void App::TermInterface()
 {
 	DebugMessage("TermInterface Enter");
 
-	ifc_thread_.ctx_->oob_queue_->push(unique_ptr<msg::ThreadDie>(new msg::ThreadDie()));
+	ifc_thread_.ctx_->PushOOBMessage(unique_ptr<msg::ThreadDie>(new msg::ThreadDie()));
 
 	DebugMessage("TermInterface Leave");
 }
