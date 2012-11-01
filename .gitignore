@@ -2,13 +2,9 @@
 .sdf
 *.sdf
 *.opensdf
-*Debug/*
 *bin/*
-*x64/*
-*x86/*
+*win/dist/*
 *win/x64/*
-*win/x86/*
-*Release/*
 *.suo
 ipch/*
 *.vsp
