@@ -9,7 +9,10 @@ CXXFLAGS = -I /dev/ \
 	-I ~/dev/SpryWare/MISApi/include/ \
 	-I ~/dev/ \
 	-std=c++0x \
-	-Dlinux
+	-Dlinux \
+	-lboost_system \
+	-lboost_filesystem \
+	-L/usr/local/lib
 	
 all : xcast
 
@@ -17,9 +20,9 @@ clean :
 	rm -f $(OBJECTS)
 
 xcast : $(OBJECTS)
-	c++ $(CXXFLAGS) -o $@ $(OBJECTS)
+	echo ==SOURCES==
+	echo $(CXX_COURCES)
+	$(CXX) $(CXXFLAGS) -o $@ $(OBJECTS)
 
-.cpp.o :
-	$(CC) $(CXXFLAGS) $< -o $@
 
 

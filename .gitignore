@@ -11,4 +11,5 @@ ipch/*
 *.psess
 version.h-*
 *ipch
+*.o
 

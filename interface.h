@@ -10,7 +10,7 @@ class InterfaceProcessor
 {
 public:
 	static std::unique_ptr<InterfaceProcessor> Create(std::shared_ptr<msg::MsgQueue> server_queue);
-	virtual ~InterfaceProcessor() = 0 {}
+	virtual ~InterfaceProcessor() = 0;
 	virtual void operator()() = 0;
 
 	//virtual void kill() = 0;

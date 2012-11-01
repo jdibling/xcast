@@ -218,8 +218,6 @@ namespace msg
 	class concurrent_queue : public SignalingPolicy
 	{
 	public:
-		typedef SignalingPolicy SignalingPolicy;
-
 		std::queue<Data> the_queue;
 		mutable boost::mutex the_mutex;
 		boost::condition_variable the_condition_variable;
@@ -268,7 +266,7 @@ namespace msg
 				SignalingPolicy::reset();
 				break;
 			case false :
-				SignalingPoicy::signal();
+				SignalingPolicy::signal();
 				break;
 			}
 

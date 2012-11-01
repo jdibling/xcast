@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <string>
 #include <sstream>
+#include <cstdint>
 
 namespace utils
 {
@@ -21,7 +22,7 @@ namespace utils
 		std::stringstream ss_;
 	};
 
-	std::string as_bytes(__int64 bytes);
+	std::string as_bytes(int64_t bytes);
 }
 
 #endif
