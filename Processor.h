@@ -1,7 +1,7 @@
 #ifndef XCAST_PROCESSOR
 #define XCAST_PROCESSOR
 
-#include <WinSock2.h>
+//#include <WinSock2.h>
 
 #include <cstdlib>
 #include <memory>
@@ -15,11 +15,6 @@
 #include <boost/asio.hpp>
 #include <boost/chrono.hpp>
 
-//#include <misapi.h>
-//#include <MisTypes.h>
-//#include <Directory.h>
-//#include <Database/SourceContent.h>
-//#include <Database\Time.h>
 #include <CaptureApi.h>
 
 
