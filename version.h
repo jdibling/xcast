@@ -4,7 +4,7 @@
 #define VERSION_MAJOR               0
 #define VERSION_MINOR               9
 #define VERSION_REVISION            2
-#define VERSION_BUILD               206
+#define VERSION_BUILD               210
 
 #define VER_COMPANYNAME_STR			"SpryWare"
 #define VER_FILE_DESCRIPTION_STR    "xcast -- Simultaneous Capture Playback With Guaranteed Packet Order"

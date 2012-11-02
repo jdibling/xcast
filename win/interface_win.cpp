@@ -11,6 +11,15 @@ using dibcore::util::Formatter;
 #include <memory>
 using namespace std;
 
+InterfaceProcessor::~InterfaceProcessor()
+{
+}
+
+std::unique_ptr<InterfaceProcessor> InterfaceProcessor::Create(std::shared_ptr<msg::MsgQueue> server_queue)
+{
+	return std::unique_ptr<InterfaceProcessor>(new win::InterfaceProcessor(server_queue));
+}
+
 namespace win
 {
 	InterfaceProcessor::InterfaceProcessor(std::shared_ptr<msg::MsgQueue> server_queue) 
