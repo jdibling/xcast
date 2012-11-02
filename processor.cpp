@@ -14,7 +14,7 @@ using dibcore::util::Formatter;
 #include <boost/chrono.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/filesystem.hpp>
-namespace fs = boost::filesystem3;
+namespace fs = boost::filesystem;
 
 
 GroupProcessor::GroupProcessor(const std::string& group_name, const opts::Options& o, std::shared_ptr<msg::MsgQueue> server_queue, bool playback_paused) 
@@ -113,7 +113,7 @@ GroupProcessor::Channel::Channel(const std::string& name, const std::string& cap
 
 void GroupProcessor::Init()
 {
-	for( opts::ChannelDescs::const_iterator desc = opts_.channels_.begin(); desc != opts_.channels_.end(); ++desc )
+	for( opts::ChannelDescs::iterator desc = opts_.channels_.begin(); desc != opts_.channels_.end(); ++desc )
 	{
 		ChannelPtr ch(new Channel(desc->name_,desc->file_,desc->group_, boost::lexical_cast<unsigned short>(desc->port_), opts_.ttl_));
 		channels_[desc->name_] = std::move(ch);
@@ -163,9 +163,11 @@ void GroupProcessor::HandleRestart(const msg::Restart&)
 		server_queue_->push(unique_ptr<msg::Paused>(new msg::Paused(group_name_)));
 	}
 	// Restart each source
-	for_each( channels_.begin(), channels_.end(), [this](ChannelPtrs::value_type& that)
+	for( auto it = channels_.begin(); it != channels_.end(); ++it )
 	{
-		Channel& ch = *that.second.get();
+	//for_each( channels_.begin(), channels_.end(), [this](ChannelPtrs::value_type& that)
+	//{
+		Channel& ch = *it->second.get();
 
 		GroupProcessor::Source& src = ch.src_;
 		src.Restart();
@@ -174,7 +176,7 @@ void GroupProcessor::HandleRestart(const msg::Restart&)
 		stats.bytes_sent_ = 0;
 
 		server_queue_->push(unique_ptr<msg::Restarted>(new msg::Restarted(ch.name_)));
-	});
+	}//);
 	// Reset group stats
 	stats_.prev_elapsed_ = ClockDuration(0);
 }
@@ -218,10 +220,11 @@ void GroupProcessor::HandleRequestProgress(const msg::RequestProgress& req)
 	 
 	std::set<xcast::PacketTime> packet_times;
 
-	for_each( channels_.begin(), channels_.end(), [this, &grp_prog, &packet_times, &req](ChannelPtrs::value_type& that)
+	for( auto it = channels_.begin(); it != channels_.end(); ++it )
+//	for_each( channels_.begin(), channels_.end(), [this, &grp_prog, &packet_times, &req](ChannelPtrs::value_type& that)
 	{
 		unique_ptr<msg::ChannelProgress> ch_prog(new msg::ChannelProgress());
-		const Channel& ch = *that.second.get();
+		const Channel& ch = *it->second.get();
 		const GroupProcessor::Channel::Stats& stats = ch.stats_;
 
 		ch_prog->channel_ = ch.name_;
@@ -239,7 +242,7 @@ void GroupProcessor::HandleRequestProgress(const msg::RequestProgress& req)
 
 		if( req.type_ == opts::show_both || req.type_ == opts::show_channels )
 			server_queue_->push(unique_ptr<msg::BasicMessage>(std::move(ch_prog)));
-	});
+	}//);
 
 	if( !packet_times.empty() )
 		grp_prog->next_packet_ = packet_times.begin()->format();
@@ -271,7 +274,7 @@ void GroupProcessor::ProcessPacket()
 	const xcast::PacketTime& cur_pt = it->second->src_.cur_packet_time_;
 
 	// find next time to pause
-	opts::PacketTimes::const_iterator next_pause = std::min_element(opts_.pauses_.begin(), opts_.pauses_.end(), std::less<xcast::PacketTime>());
+	opts::PacketTimes::iterator next_pause = std::min_element(opts_.pauses_.begin(), opts_.pauses_.end(), std::less<xcast::PacketTime>());
 	if( next_pause != opts_.pauses_.end() )
 	{
 		if( (*next_pause) < cur_pt )

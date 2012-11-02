@@ -7,6 +7,8 @@
 #include <memory>
 #include <unordered_map>
 #include <list>
+#include <functional>
+#include <string>
 
 #include "xcast.h"
 #include "msg.h"
@@ -45,6 +47,17 @@ public:
 
 	std::unique_ptr<msg::MsgQueue>	oob_queue_;
 	std::string group_name_;
+
+	struct MatchID : public std::unary_function<bool,GroupProcessor>
+	{
+		MatchID(const std::string& id) : id_(id) {};
+		bool operator()(const GroupProcessor* rhs) const
+		{
+			return rhs->ID() == id_;
+		}
+	private:
+		std::string id_;
+	};
 
 private:
 	void LogMessage(const std::string& msg) const;
@@ -140,7 +153,7 @@ private:
 
 	void GatherStats(const Channel& chan, size_t bytes_sent);
 
-	typedef std::unique_ptr<Channel> ChannelPtr;
+	typedef std::shared_ptr<Channel> ChannelPtr; // NOTE: GCC 4.4 support for unique_ptr in std::map is incomplete, so I have to use shared_ptr here
 	typedef std::map<std::string, ChannelPtr> ChannelPtrs;
 	ChannelPtrs channels_;
 

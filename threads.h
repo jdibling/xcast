@@ -1,6 +1,9 @@
 #ifndef XCAST_THREADS
 #define XCAST_THREADS
 
+#include <cstdlib>
+#include <functional>
+
 #include <boost/thread.hpp>
 
 template<class Context>
@@ -27,7 +30,17 @@ public:
 	}
 	
 	std::string ThreadID() const { return ctx_->ID(); }
-
+	struct IDMatch : public std::unary_function<Thread<Context>,bool>
+	{
+		IDMatch(const std::string& id) : id_(id) {}
+		bool operator()(const Thread<Context>& rhs) const
+		{ 
+			return rhs.ThreadID() == id_;
+		}
+	private:
+		std::string id_;
+	};
+	
 	void join() const;
 
 	std::unique_ptr<Context>			ctx_;
@@ -54,7 +67,7 @@ public:
 
 template<class Context> void Threads<Context>::join_all() const
 {
-	for( ThreadVec::const_iterator it = threads_.begin(); it != threads_.end(); ++it )
+	for( auto it = threads_.begin(); it != threads_.end(); ++it )
 		it->join();
 }
 

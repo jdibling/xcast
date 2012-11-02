@@ -12,6 +12,10 @@ CXXFLAGS = -I /dev/ \
 	-Dlinux \
 	-lboost_system \
 	-lboost_filesystem \
+	-lboost_thread \
+	-lboost_program_options \
+	-lboost_regex \
+	-lMisApi \
 	-L/usr/local/lib
 	
 all : xcast
@@ -20,9 +24,10 @@ clean :
 	rm -f $(OBJECTS)
 
 xcast : $(OBJECTS)
-	echo ==SOURCES==
-	echo $(CXX_COURCES)
+	ctags $(CXX_SOURCES)
 	$(CXX) $(CXXFLAGS) -o $@ $(OBJECTS)
+	
+
 
 
 

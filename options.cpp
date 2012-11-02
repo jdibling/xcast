@@ -1,6 +1,6 @@
 #include <core/core.h>
 #include "utils.h"
-using utils::Formatter;
+using dibcore::util::Formatter;
 #include "options.h"
 using namespace opts;
 
@@ -20,7 +20,7 @@ using std::endl;
 using std::right;
 using std::setw;
 using std::setfill;
-#include <regex>
+//#include <regex>
 
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
@@ -28,6 +28,7 @@ using std::setfill;
 #include <boost/tokenizer.hpp>
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/regex.hpp>
 using namespace boost;
 using namespace boost::program_options;
 namespace fs = boost::filesystem;
@@ -294,19 +295,19 @@ Options opts::parse_command_line(int ac, char* av[])
 				SS = 6,
 				MS = 7;
 							
-			std::regex rx("^(?:(\\d{2,4})\\/(\\d{1,2})\\/(\\d{1,2})\\s?)?(\\d{1,2}):(\\d{1,2}):?(\\d{1,2})?\\.?(\\d{1,3})?");
-			std::cmatch rm;
+			regex rx("^(?:(\\d{2,4})\\/(\\d{1,2})\\/(\\d{1,2})\\s?)?(\\d{1,2}):(\\d{1,2}):?(\\d{1,2})?\\.?(\\d{1,3})?");
+			cmatch rm;
 			
 			bool valid = false;
 			// trim leading & trailing spaces from string
-			while( !line.empty() && (line.front() == ' ' || line.front() == '\t') )	line.erase(0,1);
-			while( !line.empty() && (line.back() == ' ' || line.back() == '\t') )		line.erase(line.size()-1,1);
+			while( !line.empty() && (line[0] == ' ' || line[line.length()-1] == '\t') )	line.erase(0,1);
+			while( !line.empty() && (line[line.length()-1] == ' ' || line[line.length()-1] == '\t') )		line.erase(line.size()-1,1);
 
 			if( line.empty() )
 			{
 				valid = true;
 			}
-			else if( std::regex_search(line.c_str(), rm, rx) )
+			else if( regex_search(line.c_str(), rm, rx) )
 			{
 				valid = true;
 

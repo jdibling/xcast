@@ -21,8 +21,6 @@ using namespace std;
 
 #include "threads.h"
 
-#include <Windows.h>
-
 #include <core/core.h>
 using dibcore::util::Formatter;
 
@@ -34,7 +32,7 @@ using dibcore::util::Formatter;
 
 *****************************/
 
-string as_bytes(__int64 bytes, bool as_bits = false, std::streamsize width = 4)
+string as_bytes(int64_t bytes, bool as_bits = false, std::streamsize width = 4)
 {
 	char b = as_bits ? 'b' : 'B';
 	if( as_bits )
@@ -60,9 +58,7 @@ public:
 	:	opts_(opts),
 		server_queue_(new msg::MsgQueue),
 		state_(run_state),
-		ifc_thread_(InterfaceProcessor::Create(server_queue_)),
-		stdout_(GetStdHandle(STD_OUTPUT_HANDLE)),
-		stderr_(GetStdHandle(STD_ERROR_HANDLE))
+		ifc_thread_(InterfaceProcessor::Create(server_queue_))
 	{
 	}
 	void run();
@@ -87,18 +83,12 @@ private:
 	{
 		if( opts_.out_fmt_ == opts::verbose_fmt  )
 		{
-			string copy = msg;
-			copy += "\n";
-			DWORD written = 0;
-			WriteFile(stderr_, copy.c_str(), static_cast<DWORD>(copy.length()), &written, 0);
+			cerr << msg << endl;
 		}
 	}
 	void LogMessage(const string& msg) const
 	{
-		string copy = msg;
-		copy += "\n";
-		DWORD written = 0;
-		WriteFile(stdout_, copy.c_str(), static_cast<DWORD>(copy.length()), &written, 0);
+		cout << msg << endl;
 	}
 
 	void TermInterface();
@@ -111,8 +101,6 @@ private:
 	typedef Threads<GroupProcessor>			GroupThreads;
 	InterfaceThread							ifc_thread_;
 	GroupThreads								grp_threads_;
-	HANDLE									stdout_,		
-											stderr_;
 };
 
 void App::TermInterface()
@@ -179,10 +167,11 @@ void App::HandleThreadDead(const msg::ThreadDead& dead)
 {
 	string id = dead.id_;
 
-	auto thread = find_if(grp_threads_.threads_.begin(), grp_threads_.threads_.end(), [&dead](const Thread<GroupProcessor>& that) -> bool
+	auto thread = find_if(grp_threads_.threads_.begin(), grp_threads_.threads_.end(), Thread<GroupProcessor>::IDMatch(dead.id_));	
+/*	auto thread = find_if(grp_threads_.threads_.begin(), grp_threads_.threads_.end(), [&dead](const Thread<GroupProcessor>& that) -> bool
 	{
 		return that.ThreadID() == dead.id_;
-	});
+	});*/
 	if( thread != grp_threads_.threads_.end() )
 	{
 		// A group processor died
@@ -301,15 +290,20 @@ void App::run()
 
 	LogMessage("=== XCAST PARAMETERS ===");
 	LogMessage(Formatter()<<opts_.channels_.size() << " Channels:");
-	for_each(opts_.channels_.begin(), opts_.channels_.end(), [this](const opts::ChannelDesc& ch)
+
+	for(auto it = opts_.channels_.begin(); it != opts_.channels_.end(); ++it)
+//	for_each(opts_.channels_.begin(), opts_.channels_.end(), [this](const opts::ChannelDesc& ch)
 	{
+		const opts::ChannelDesc& ch = *it;
 		this->LogMessage(Formatter() << "\t" << ch.name_ << "\t[" << ch.group_ << ":" << ch.port_ << "] : " << ch.file_);
-	});
+	}//);
 	LogMessage(Formatter()<<opts_.pauses_.size() << " Pauses:");
-	for_each(opts_.pauses_.begin(), opts_.pauses_.end(), [this](const xcast::PacketTime& pt)
+	for( auto it = opts_.pauses_.begin(); it != opts_.pauses_.end(); ++it )
+//	for_each(opts_.pauses_.begin(), opts_.pauses_.end(), [this](const xcast::PacketTime& pt)
 	{
+		const xcast::PacketTime& pt = *it;
 		this->LogMessage(Formatter() << "\t" << pt.format());
-	});
+	}//);
 	LogMessage(Formatter() << "TTL: " << opts_.ttl_);
 	LogMessage(Formatter() << "Packet Delay: " << opts_.delay_);
 	LogMessage("=========================");

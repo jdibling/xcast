@@ -8,7 +8,7 @@
 
 namespace utils
 {
-	class Formatter
+/*	class Formatter
 	{
 	public:
 		template<class Val> Formatter& operator<<(const Val& val)
@@ -22,7 +22,7 @@ namespace utils
 		std::stringstream ss_;
 	};
 
-	std::string as_bytes(int64_t bytes);
+	std::string as_bytes(int64_t bytes);*/
 }
 
 #endif
